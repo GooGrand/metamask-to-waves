@@ -58,6 +58,7 @@ function checkWavesAccount(account) {
 module.exports = {
     createWavesAccount,
     saveWavesAccount,
-    checkWavesAccount
+    checkWavesAccount,
+    getSeed
 }
 
