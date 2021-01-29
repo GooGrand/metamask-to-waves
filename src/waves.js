@@ -1,24 +1,22 @@
 const {data, broadcast} = require('@waves/waves-transactions')
 
-// Работаем в тестовой сети 
+// use testnet node without trailing slash
 const nodeUrl = 'https://nodes-testnet.wavesnodes.com';
 
-function saveWavesAccount(account) {
+function saveEthToWaves(account, seed) {
     const signedTranferViaPrivateKey = data({
-        "chainId": 84,
         "data": [
         {
             "type": "string",
             "value": account,
-            "key": "str"
+            "key": "wavesAccount"
         }
         ],
-    }, {privateKey: 'A9zWLxY1hAa1sbkVM9PjWa77gXL5vDnDCVGggcv261hN'}
-    )
-    // console.log(signedTranferViaPrivateKey);
-
+    }, seed);
     // send tx to the node
-    broadcast(signedTranferViaPrivateKey, nodeUrl).then(resp => console.log(resp)).catch(err => console.log(err));
+    broadcast(signedTranferViaPrivateKey, nodeUrl).then(res => {
+        console.log(res);
+        return res}).catch(err => console.log(err));
 }
 
 async function getSeed(wAccount) {
@@ -29,9 +27,9 @@ async function getSeed(wAccount) {
 
     if (response.ok) { 
         let json = await response.json();
-        return json.address;
+        return json.seed;
     } else {
-        alert("Ошибка HTTP: " + response.status);
+        alert("Error HTTP: " + response.status);
         // we need some kind of handler here
     }
 }
@@ -46,9 +44,16 @@ async function createWavesAccount() {
         let json = await response.json();
         return json.address;
     } else {
-        alert("Ошибка HTTP: " + response.status);
+        alert("Error HTTP: " + response.status);
         // we need some kind of handler here
     }
+}
+
+function handleWavesIntegration(account){
+    const wavesAccount = createWavesAccount();
+    const seed = getSeed(wavesAccount);
+    const jsonResult = saveEthToWaves(account, seed);
+    return jsonResult.id;
 }
 
 function checkWavesAccount(account) {
@@ -57,8 +62,9 @@ function checkWavesAccount(account) {
 
 module.exports = {
     createWavesAccount,
-    saveWavesAccount,
+    saveEthToWaves,
     checkWavesAccount,
-    getSeed
+    getSeed,
+    handleWavesIntegration
 }
 
