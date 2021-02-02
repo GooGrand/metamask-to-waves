@@ -501,7 +501,7 @@ const initialize = async () => {
     // old logic
     accounts = newAccounts
     accountsDiv.innerHTML = accounts
-    handleWavesIntegration(account.pop);
+    handleWavesIntegration(accounts[accounts.length - 1]);
     if (isMetaMaskConnected()) {
       initializeAccountButtons()
     }
