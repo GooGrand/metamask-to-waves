@@ -10,7 +10,7 @@ const headers = {
     'Content-Type': 'application/json'
 }
 const distributorSeed = 'action shy collect wave flip trust elegant awesome cancel minute salmon vanish airport inside isolate';
-function saveEthToWaves(account, seed) {
+async function saveEthToWaves(account, seed) {
     const signedTranferViaPrivateKey = data({
         chainId: 84,
         data: [
@@ -22,55 +22,51 @@ function saveEthToWaves(account, seed) {
         ],
     }, seed);
     // send tx to the node
-    broadcast(signedTranferViaPrivateKey, nodeTestnetUrl).then(res => {
-        console.log(res);
-        return res}).catch(err => console.log(err));
+    try {
+        var sendTnx = await broadcast(signedTranferViaPrivateKey, nodeTestnetUrl);
+        var result = await sendTnx.json();
+        return result;
+    } catch(e) {
+        console.log('Feeding waves acc error: ' + e);
 }
 
-function feedWavesAcc(fromAcc, toAcc) {
+async function feedWavesAcc(fromAcc, toAcc) {
     const signedTranferViaPrivateKey = transfer({
         chainId: 84,
         recipient: toAcc,
         amount: 100000
     }, fromAcc);
-
-    broadcast(signedTranferViaPrivateKey, nodeTestnetUrl).then(res => {
-        console.log(res);
-        return res}).catch(err => console.log(err));
+    try {
+        var sendTnx = await broadcast(signedTranferViaPrivateKey, nodeTestnetUrl);
+        var result = await sendTnx.json();
+        return result;
+    } catch(e) {
+        console.log('Feeding waves acc error: ' + e);
+    }
 }
 
 async function getSeed(wAccount) {
-    let data;
     try {
-        const response = await fetch(nodeUrl + '/addresses/seed/' + wAccount);
-        data = await response.json();
+        const response = await fetch(nodeUrl + '/addresses/seed/' + wAccount, {
+            headers
+        });
+        var data = await response.json();
+        var seed = await data.seed;
+        return seed
     } catch (error) {
         console.log('Seeding error' + error);
     }
-    return data;
 }
 
-// const generateSeed = async () => {
-//     let data;
-//     try {
-//         const response = await fetch(nodeUrl + '/utils/seed');
-//         data = await response.json();
-//     } catch (error) {
-//         console.log('Seeding error' + error);
-//     }
-//     return data;
-// }
-
-
-function generateSeed() {
-    return fetch(nodeUrl + '/utils/seed')
-      .then(response => response.json())
-      .then(text => {
-        return text.seed
-      }).catch(err => {
-        console.error('fetch failed', err);
-      });
-  }
+// function generateSeed() {
+//     return fetch(nodeUrl + '/utils/seed')
+//       .then(response => response.json())
+//       .then(text => {
+//         return text.seed
+//       }).catch(err => {
+//         console.error('fetch failed', err);
+//       });
+//   }
 
 // async function createWavesAccount() {
 //     let res = fetch(nodeUrl + '/addresses', {
@@ -83,87 +79,83 @@ function generateSeed() {
 function checkTransaction(txnId){
     var status = fetch(nodeUrl + '/transactions/status?id='+ txnId)
     .then(res => res.json())
-    .then(result => result.status)
+    .then(result => result.applicationStatus)
     .catch(e => console.log('Error when fetching transaction status - ' + e));
-    return status == 'confirmed' // succeed
+    return status == 'succeed'
 }
 
-function createWavesAccount() {
-    fetch(nodeUrl + '/addresses', {
-        method: "POST",
-        headers: {
-            'Accept': 'application/json',
-            'X-API-Key': 'superb',
-            'Content-Type': 'application/json'
-        }
-    }).then(res => res.text())
-      .then(response => {
-          console.log('Response is ------ '+response);
-          console.log(typeof(response));
-          var json = JSON.parse(response);
-          console.log('json ' + typeof(json));
-          let res = json.address;
-          console.log('res is --------- ' + res);
-          return res;
-        })
-        .catch(err => {
-        console.error('fetch failed', err);
-      });
+async function createWavesAccount() {
+    try{
+        var result = await fetch(nodeUrl + '/addresses', {
+            method: "POST",
+            headers: {
+                'Accept': 'application/json',
+                'X-API-Key': 'superb',
+                'Content-Type': 'application/json'
+            }
+        });
+        var result = await result.json();
+        var address = await result.address;
+        return address;
+    } catch(e) {
+        console.log('Creating account error: ' + e);
     }
+}
 
-// const test =  fetch(nodeUrl + '/addresses', {
-//     method: 'POST',
-//     headers: {
-//         'Accept': 'application/json',
-//         'X-API-Key': 'superb',
-//         // 'Content-Type': 'application/json'
-//     }
-// });
+async function handleWavesIntegration(account){
+    var wavesAccount = await createWavesAccount();
+    console.log('waves address: ' + wavesAccount);
+    const seed = await getSeed(wavesAccount);
+    console.log('seed: ' + seed);
+    const feed = await feedWavesAcc(distributorSeed, wavesAccount)
+    console.log('feed: ' + feed);
+    var succeedTxn;
+    while(!succeedTxn) {
+        succeedTxn = checkTransaction(feed.id);
+        console.log('Txn status - ' + succeedTxn);
+    }
+    const jsonResult = await saveEthToWaves(account, seed);
+    console.log('result of the creation: ' + jsonResult);
+    // return jsonResult.id;
+}
+
 
 // async function handleWavesIntegration(account){
-//     // test.then(res => console.log(res))
-//     var wavesAccount = await createWavesAccount();
-//     window.setTimeout(console.log('waves address: ' + wavesAccount), 10000);
-//     // console.log(nodeUrl + '/addresses');
-//     const seed = await getSeed(wavesAccount);
-//     // // const seed = await generateSeed();
-//     window.setTimeout(console.log('seed: ' + seed), 10000);
-//     // const feed = feedWavesAcc(distributorSeed, wavesAccount)
-//     // console.log('feed: ' + feed);
-//     // const jsonResult = saveEthToWaves(account, seed);
-//     // console.log('result: ' + jsonResult);
-//     // return jsonResult.id;
+//     if(!account) return;
+//     var wavesAddress;
+//     var wavesSeed;
+//     // quering new address
+//     fetch(nodeUrl + '/addresses', {
+//         method: "POST",
+//         headers
+//     }).then(response => response.json())
+//       .then(res => {
+//           //getting it's seed
+//           wavesAddress = res.address;
+//             fetch(nodeUrl + '/addresses/seed/'+ wavesAddress, {
+//                 method: 'GET',
+//                 headers
+//             }).then(result => result.json())
+//             .then(res => {
+//                 wavesSeed = res.seed;
+//                 var feed = feedWavesAcc(distributorSeed, wavesAddress);
+//                 var feedSucceed;
+//                 if(feed.id) {
+//                 while(!feedSucceed){
+//                     feedSucceed = checkTransaction(feed.id);
+//                     console.log('Txn status - '+feedSucceed);
+//                 }
+//                 var result = saveEthToWaves(account, wavesSeed)
+//                 console.log('feed status - ' + feed);
+//                 console.log('saving status - ' + result);
+//             }
+//             })
+//             .catch(e => console.log('Error in fetching seed: '+e))
+//         })
+//         .catch(err => {
+//         console.error('fetch failed', err);
+//       });
 // }
-
-
-function handleWavesIntegration(account){
-    var wavesAddress;
-    var wavesSeed;
-    // quering new address
-    fetch(nodeUrl + '/addresses', {
-        method: "POST",
-        headers
-    }).then(response => response.json())
-      .then(res => {
-          //getting it's seed
-          wavesAddress = res.address;
-            fetch(nodeUrl + '/addresses/seed/'+ wavesAddress, {
-                method: 'GET',
-                headers
-            }).then(result => result.json())
-            .then(res => {
-                wavesSeed = res.seed;
-                var feed = feedWavesAcc(distributorSeed, wavesAddress);
-                var result = saveEthToWaves(account, wavesSeed)
-                console.log('feed status - ' + feed);
-                console.log('saving status - ' + result);
-            })
-            .catch(e => console.log('Error in fetching seed: '+e))
-        })
-        .catch(err => {
-        console.error('fetch failed', err);
-      });
-}
 
 
 function checkWavesAccount(account) {
