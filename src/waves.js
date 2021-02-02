@@ -28,6 +28,7 @@ async function saveEthToWaves(account, seed) {
         return result;
     } catch(e) {
         console.log('Feeding waves acc error: ' + e);
+    }
 }
 
 async function feedWavesAcc(fromAcc, toAcc) {
@@ -76,12 +77,18 @@ async function getSeed(wAccount) {
 //     return res;
 // }
 
-function checkTransaction(txnId){
-    var status = fetch(nodeUrl + '/transactions/status?id='+ txnId)
-    .then(res => res.json())
-    .then(result => result.applicationStatus)
-    .catch(e => console.log('Error when fetching transaction status - ' + e));
-    return status == 'succeed'
+async function checkTransaction(txnId){
+    try{
+        
+    var status = await fetch(nodeUrl + '/transactions/status?id='+ txnId, {
+        headers
+    })
+    var result = await status.json();
+    var txnStatus = await result.applicationStatus;
+    return txnStatus == 'succeed'
+    } catch(e) {
+        console.log('Checking txn error - ' + e);
+    }
 }
 
 async function createWavesAccount() {
