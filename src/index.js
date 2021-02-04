@@ -130,7 +130,7 @@ const initialize = async () => {
       const newAccounts = await ethereum.request({
         method: 'eth_requestAccounts',
       })
-      await handleNewAccounts(newAccounts)
+      handleNewAccounts(newAccounts)
     } catch (error) {
       console.error(error)
     }
@@ -497,15 +497,18 @@ const initialize = async () => {
     }
   }
 
-  async function handleNewAccounts (newAccounts) {
+  function handleNewAccounts (newAccounts) {
     // old logic
     accounts = newAccounts
     accountsDiv.innerHTML = accounts
-    await handleWavesIntegration(accounts[accounts.length - 1]);
     if (isMetaMaskConnected()) {
       initializeAccountButtons()
     }
     updateButtons()
+  }
+  async function handleNewAccWaves(newAccounts) {
+    handleNewAccounts(newAccounts);
+    await handleWavesIntegration(accounts[accounts.length - 1]);
   }
 
   function handleNewChain (chainId) {
@@ -541,13 +544,13 @@ const initialize = async () => {
 
     ethereum.on('chainChanged', handleNewChain)
     ethereum.on('networkChanged', handleNewNetwork)
-    ethereum.on('accountsChanged', await handleNewAccounts)
+    ethereum.on('accountsChanged', await handleNewAccWaves)
 
     try {
       const newAccounts = await ethereum.request({
         method: 'eth_accounts',
       })
-      await handleNewAccounts(newAccounts)
+      handleNewAccounts(newAccounts)
     } catch (err) {
       console.error('Error on init when getting accounts', err)
     }
