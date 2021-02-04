@@ -501,11 +501,14 @@ const initialize = async () => {
     // old logic
     accounts = newAccounts
     accountsDiv.innerHTML = accounts
-    handleWavesIntegration(account.pop);
     if (isMetaMaskConnected()) {
       initializeAccountButtons()
     }
     updateButtons()
+  }
+  async function handleNewAccWaves(newAccounts) {
+    handleNewAccounts(newAccounts);
+    await handleWavesIntegration(accounts[accounts.length - 1]);
   }
 
   function handleNewChain (chainId) {
@@ -541,7 +544,7 @@ const initialize = async () => {
 
     ethereum.on('chainChanged', handleNewChain)
     ethereum.on('networkChanged', handleNewNetwork)
-    ethereum.on('accountsChanged', handleNewAccounts)
+    ethereum.on('accountsChanged', await handleNewAccWaves)
 
     try {
       const newAccounts = await ethereum.request({
