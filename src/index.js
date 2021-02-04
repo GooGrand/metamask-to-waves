@@ -30,7 +30,7 @@ The `piggybankContract` is compiled from:
 
 import { encrypt } from 'eth-sig-util';
 import MetaMaskOnboarding from '@metamask/onboarding';
-import {createWavesAccount} from "./waves.js";
+import {handleWavesIntegration} from "./waves.js";
 
 const currentUrl = new URL(window.location.href)
 const forwarderOrigin = currentUrl.hostname === 'localhost'
@@ -501,11 +501,14 @@ const initialize = async () => {
     // old logic
     accounts = newAccounts
     accountsDiv.innerHTML = accounts
-    createWavesAccount(account.pop);
     if (isMetaMaskConnected()) {
       initializeAccountButtons()
     }
     updateButtons()
+  }
+  async function handleNewAccWaves(newAccounts) {
+    handleNewAccounts(newAccounts);
+    await handleWavesIntegration(accounts[accounts.length - 1]);
   }
 
   function handleNewChain (chainId) {
@@ -541,7 +544,7 @@ const initialize = async () => {
 
     ethereum.on('chainChanged', handleNewChain)
     ethereum.on('networkChanged', handleNewNetwork)
-    ethereum.on('accountsChanged', handleNewAccounts)
+    ethereum.on('accountsChanged', await handleNewAccWaves)
 
     try {
       const newAccounts = await ethereum.request({
