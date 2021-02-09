@@ -3,7 +3,7 @@ const {setScript, data, transfer, broadcast} = require('@waves/waves-transaction
 /*                 Importing waves libraries and neccessary functions           */ 
 const libCrypto = require('@waves/waves-transactions').libs.crypto
 const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
-const {distributorSeed, headers, nodeUrl, nodeTestnetUrl} = require('./config');
+const {distributorSeed, headers, nodeUrl, nodeTestnetUrl, distributorPrivateKey} = require('./config');
 
 const sleep = m => new Promise(r => setTimeout(r, m));
 
@@ -11,10 +11,9 @@ async function feedWavesAcc(fromAcc, toAcc) {
     const signedTransfer = transfer({
         chainId: 84,
         recipient: toAcc,
-        amount: 100000,
+        amount: 1800000,
         fee: 5000000
     }, fromAcc);
-    console.log(signedTransfer);
     try {
         var result = await broadcast(signedTransfer, nodeTestnetUrl);
         return result;
@@ -53,7 +52,6 @@ async function setScriptWaves(sign, wavesAddress, seed) {
         script: script,
         fee: 1400000,
     }, seed);
-    console.log(signedTransfer);
     try {
         var result = await broadcast(signedTransfer, nodeTestnetUrl);
         return result;
@@ -62,10 +60,27 @@ async function setScriptWaves(sign, wavesAddress, seed) {
         console.log(e);
     }
 }
+async function setupWavesAccount(sign){
+    const instance = new Seed(Seed.create().phrase, 'T'.charCodeAt(0));
+    let { address, phrase: seed, keyPair } = instance;
+    console.log('Generated seed - '+seed);
+    console.log('Generated address - '+address);
+    const { publicKey, privateKey } = keyPair
+    console.log('Generated public key - '+publicKey);
+    var feed = await feedWavesAcc(distributorSeed, address);
+    console.log('Result of feeding waves account');
+    console.log(feed);
+    console.log('Waiting for txn to complete');
+    await sleep(30000);
+    var setScript = await setScriptWaves(sign, address, seed);
+    console.log('Check the result here');
+    console.log(`https://testnet.wavesexplorer.com/address/${address}/script`);
+}
 
 module.exports = {
     feedWavesAcc,
     setScriptWaves,
-    sleep
+    sleep,
+    setupWavesAccount
 }
 

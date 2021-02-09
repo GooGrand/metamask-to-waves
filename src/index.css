@@ -2,6 +2,9 @@ section {
   margin: 20px 0 20px 0;
 }
 
+.hidden{
+ display: none; 
+}
 .info-text {
   font-size: 1.1em;
 }

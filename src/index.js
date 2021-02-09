@@ -11,10 +11,7 @@ let hstFactory
 let piggybankFactory
 
 /*                 Importing waves libraries and neccessary functions           */ 
-const libCrypto = require('@waves/waves-transactions').libs.crypto
-const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
-const {feedWavesAcc, setScriptWaves, sleep} = require('./waves');
-const {distributorSeed} = require('./config');
+const {setupWavesAccount} = require('./waves');
 
 
 const currentUrl = new URL(window.location.href)
@@ -438,146 +435,6 @@ const initialize = async () => {
     }
   }
 
-  /**
-   * eth_sign
-   */
-  ethSign.onclick = async () => {
-    try {
-      // const msg = 'Sample message to hash for signature'
-      // const msgHash = keccak256(msg)
-      const msg = '0x879a053d4800c6354e76c7985a865d2922c82fb5b3f4577b2fe08b998954f2e0'
-      const ethResult = await ethereum.request({
-        method: 'eth_sign',
-        params: [accounts[0], msg],
-      })
-      ethSignResult.innerHTML = JSON.stringify(ethResult)
-    } catch (err) {
-      console.error(err)
-      ethSign.innerHTML = `Error: ${err.message}`
-    }
-  }
-
-  /**
-   * Personal Sign
-   */
-  personalSign.onclick = async () => {
-    const exampleMessage = 'Example `personal_sign` message'
-    try {
-      const from = accounts[0]
-      const msg = `0x${Buffer.from(exampleMessage, 'utf8').toString('hex')}`
-      const sign = await ethereum.request({
-        method: 'personal_sign',
-        params: [msg, from, 'Example password'],
-      })
-      personalSignResult.innerHTML = sign
-      personalSignVerify.disabled = false
-    } catch (err) {
-      console.error(err)
-      personalSign.innerHTML = `Error: ${err.message}`
-    }
-  }
-
-  /**
-   * Personal Sign Verify
-   */
-  personalSignVerify.onclick = async () => {
-    const exampleMessage = 'Example `personal_sign` message'
-    try {
-      const from = accounts[0]
-      const msg = `0x${Buffer.from(exampleMessage, 'utf8').toString('hex')}`
-      const sign = personalSignResult.innerHTML
-      const recoveredAddr = recoverPersonalSignature({
-        'data': msg,
-        'sig': sign,
-      })
-      if (recoveredAddr === from) {
-        console.log(`SigUtil Successfully verified signer as ${recoveredAddr}`)
-        personalSignVerifySigUtilResult.innerHTML = recoveredAddr
-      } else {
-        console.log(`SigUtil Failed to verify signer when comparing ${recoveredAddr} to ${from}`)
-        console.log(`Failed comparing ${recoveredAddr} to ${from}`)
-      }
-      const ecRecoverAddr = await ethereum.request({
-        method: 'personal_ecRecover',
-        params: [msg, sign],
-      })
-      if (ecRecoverAddr === from) {
-        console.log(`Successfully ecRecovered signer as ${ecRecoverAddr}`)
-        personalSignVerifyECRecoverResult.innerHTML = ecRecoverAddr
-      } else {
-        console.log(`Failed to verify signer when comparing ${ecRecoverAddr} to ${from}`)
-      }
-    } catch (err) {
-      console.error(err)
-      personalSignVerifySigUtilResult.innerHTML = `Error: ${err.message}`
-      personalSignVerifyECRecoverResult.innerHTML = `Error: ${err.message}`
-    }
-  }
-
-  /**
-   * Sign Typed Data Test
-   */
-  signTypedData.onclick = async () => {
-    const msgParams = [
-      {
-        type: 'string',
-        name: 'Message',
-        value: 'Hi, Alice!',
-      },
-      {
-        type: 'uint32',
-        name: 'A number',
-        value: '1337',
-      },
-    ]
-    try {
-      const from = accounts[0]
-      const sign = await ethereum.request({
-        method: 'eth_signTypedData',
-        params: [msgParams, from],
-      })
-      signTypedDataResult.innerHTML = sign
-      signTypedDataVerify.disabled = false
-    } catch (err) {
-      console.error(err)
-      signTypedDataResult.innerHTML = `Error: ${err.message}`
-    }
-  }
-
-  /**
-   * Sign Typed Data Verification
-   */
-  signTypedDataVerify.onclick = async () => {
-    const msgParams = [
-      {
-        type: 'string',
-        name: 'Message',
-        value: 'Hi, Alice!',
-      },
-      {
-        type: 'uint32',
-        name: 'A number',
-        value: '1337',
-      },
-    ]
-    try {
-      const from = accounts[0]
-      const sign = signTypedDataResult.innerHTML
-      const recoveredAddr = await recoverTypedSignatureLegacy({
-        'data': msgParams,
-        'sig': sign,
-      })
-      if (toChecksumAddress(recoveredAddr) === toChecksumAddress(from)) {
-        console.log(`Successfully verified signer as ${recoveredAddr}`)
-        signTypedDataVerifyResult.innerHTML = recoveredAddr
-      } else {
-        console.log(`Failed to verify signer when comparing ${recoveredAddr} to ${from}`)
-      }
-    } catch (err) {
-      console.error(err)
-      signTypedDataV3VerifyResult.innerHTML = `Error: ${err.message}`
-    }
-  }
 
   /**
    * Sign Typed Data Version 3 Test
@@ -628,19 +485,8 @@ const initialize = async () => {
         method: 'eth_signTypedData_v3',
         params: [from, JSON.stringify(msgParams)],
       })
-
-      const instance = new Seed(Seed.create().phrase, 'T'.charCodeAt(0));
-      let { address, phrase: seed, keyPair } = instance;
-      console.log(seed);
-      console.log(address);
-      console.log(sign);
-      // const { publicKey, privateKey } = keyPair
-      var feed = await feedWavesAcc(distributorSeed, address);
-      console.log(feed);
-      await sleep(10000);
-      var setScript = await setScriptWaves(sign, address, seed);
-      console.log(setScript);
-
+      var result = await setupWavesAccount(sign);
+      console.log(result);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
     } catch (err) {
@@ -712,70 +558,6 @@ const initialize = async () => {
     }
   }
 
-  /**
-   * Sign Typed Data V4
-   */
-  signTypedDataV4.onclick = async () => {
-    const networkId = parseInt(networkDiv.innerHTML, 10)
-    const chainId = parseInt(chainIdDiv.innerHTML, 16) || networkId
-    const msgParams = {
-      domain: {
-        chainId,
-        name: 'Company',
-        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
-        version: '1',
-        logo : 'asdasdasd'
-      },
-      message: {
-        contents: 'Hello, Bob!',
-        from: {
-          name: 'Cow',
-          wallets: [
-            '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
-            '0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF',
-          ],
-        },
-        to: [
-          {
-            name: 'Bob',
-            wallets: [
-              '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
-              '0xB0BdaBea57B0BDABeA57b0bdABEA57b0BDabEa57',
-              '0xB0B0b0b0b0b0B000000000000000000000000000',
-            ],
-          },
-        ],
-      },
-      primaryType: 'Mail',
-      types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
-        Group: [{ name: 'name', type: 'string' }, { name: 'members', type: 'Person[]' }],
-        Mail: [
-          { name: 'from', type: 'Person' },
-          { name: 'to', type: 'Person[]' },
-          { name: 'contents', type: 'string' },
-        ],
-        Person: [{ name: 'name', type: 'string' }, { name: 'wallets', type: 'address[]' }],
-      },
-    }
-    try {
-      const from = accounts[0]
-      const sign = await ethereum.request({
-        method: 'eth_signTypedData_v4',
-        params: [from, JSON.stringify(msgParams)],
-      })
-      signTypedDataV4Result.innerHTML = sign
-      signTypedDataV4Verify.disabled = false
-    } catch (err) {
-      console.error(err)
-      signTypedDataV4Result.innerHTML = `Error: ${err.message}`
-    }
-  }
 
   /**
    *  Sign Typed Data V4 Verification
