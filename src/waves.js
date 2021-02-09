@@ -1,197 +1,86 @@
-const {invokeScript, data, transfer, broadcast} = require('@waves/waves-transactions');
+const {setScript, data, transfer, broadcast} = require('@waves/waves-transactions');
 
-// import Signer from '@waves/signer';
-// import Provider from '@waves.exchange/provider-web';
+/*                 Importing waves libraries and neccessary functions           */ 
+const libCrypto = require('@waves/waves-transactions').libs.crypto
+const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
+const {distributorSeed, headers, nodeUrl, nodeTestnetUrl, distributorPrivateKey} = require('./config');
 
-const nodeTestnetUrl = 'https://nodes-testnet.wavesnodes.com';
-const nodeUrl = "http://127.0.0.1:6869";
-const headers = {
-    'Accept': 'application/json',
-    'X-API-Key': 'superb',
-    'Content-Type': 'application/json'
-}
 const sleep = m => new Promise(r => setTimeout(r, m));
-const distributorSeed = 'action shy collect wave flip trust elegant awesome cancel minute salmon vanish airport inside isolate';
-
-async function saveEthToWaves(account, seed, wavesAcc) {
-    // const txn = {
-    //     type: 12,
-    //     sender: wavesAcc,
-    //     data: [
-    //         {
-    //             type: "string",
-    //             value: account,
-    //             key: "wavesAccount"
-    //         }
-    //         ],
-    // }
-    const signedTransfer = await data({
-        chainId: 84,
-        sender: wavesAcc,
-        dApp: 'Eev6kfSV8P8MmzX16uRUSeFQzkEoM8cUS6hELdsSkkFu',
-        data: [
-        {
-            type: "string",
-            value: account,
-            key: "wavesAccount"
-        }
-        ],
-        seed
-    });
-
-    // var signedTxn = await fetch(nodeUrl+'/transactions/sign', {
-    //     method: "POST",
-    //     headers,
-    //     body: JSON.stringify(txn)
-    // })
-    // console.log(signedTxn);
-    console.log('signed data');
-    console.log(signedTranfer);
-    // send tx to the node
-    try {
-        var result = await broadcast(signedTransfer, nodeUrl, {
-            headers,
-            credentials: 'omit'
-        });
-        // var result = await fetch(nodeUrl +'/transactions/broadcast', {
-        //     method: "POST",
-        //     headers,
-        //     body: signedTxn
-        // })
-        return result;
-    } catch(e) {
-        console.log('Saving data acc error: ' + e);
-    }
-}
 
 async function feedWavesAcc(fromAcc, toAcc) {
-    // const txn = {
-    //     type: 4,
-    //     sender: fromAcc,
-    //     amount: 100000,
-    //     recipient: toAcc
-    // }
-    const signedTransfer = await transfer({
+    const signedTransfer = transfer({
         chainId: 84,
         recipient: toAcc,
-        amount: 100000
+        amount: 1800000,
+        fee: 5000000
     }, fromAcc);
-    // var signedTxn = await fetch(nodeUrl+'/transactions/sign', {
-    //     method: "POST",
-    //     headers,
-    //     body: JSON.stringify(txn)
-    // })
-    // console.log(signedTxn);
     try {
-        var result = await broadcast(signedTransfer, nodeUrl);
-        // var result = await fetch(nodeUrl +'/transactions/broadcast', {
-        //     method: "POST",
-        //     headers,
-        //     body: signedTxn
-        // })
+        var result = await broadcast(signedTransfer, nodeTestnetUrl);
         return result;
     } catch(e) {
-        console.log('Feeding waves acc error: ' + e);
-    }
-}
-
-async function getSeed(wAccount) {
-    try {
-        const response = await fetch(nodeUrl + '/addresses/seed/' + wAccount, {
-            headers
-        });
-        var data = await response.json();
-        var seed = await data.seed;
-        return seed
-    } catch (error) {
-        console.log('Seeding error' + error);
-    }
-}
-
-async function checkTransaction(txnId){
-    try{
-        var status = await fetch(nodeUrl + '/transactions/status?ids='+txnId, {
-            // method: "POST",
-            headers,
-            // body: {
-            //     ids: [
-            //         txnId
-            //     ]
-            // }
-        })
-        var result = await status.json();
-        return result;
-    } catch(e) {
-        console.log('Checking txn error - ' + e);
-    }
-}
-
-async function createWavesAccount() {
-    try{
-        var result = await fetch(nodeUrl + '/addresses', {
-            method: "POST",
-            headers
-        });
-        var result = await result.json();
-        var address = await result.address;
-        return address;
-    } catch(e) {
-        console.log('Creating account error: ' + e);
-    }
-}
-
-async function checkBalance(wAccount) {
-    try{
-        var result = await fetch(nodeTestnetUrl + '/addresses/balance/'+wAccount, {
-            // headers
-        });
-        var result = await result.json();
-        return result;
-    } catch(e) {
-        console.log('Checking balance error: ');
+        console.log('Feeding waves acc error: ');
         console.log(e);
     }
 }
 
-async function handleWavesIntegration(account){
-    if(!account) return;
-    var wavesAccount = await createWavesAccount();
-    console.log('waves address: ' + wavesAccount);
-    const seed = await getSeed(wavesAccount);
-    console.log('seed: ' + seed);
-    console.log('sending form seed - '+distributorSeed + '- to waves acc - ' + wavesAccount);
-    const feed = await feedWavesAcc(distributorSeed, wavesAccount)
-    console.log('feed: ');
-    console.log(feed);
-    var succeedTxn;
-    // console.log(await checkTransaction(feed.id));
-    // while(!succeedTxn) {
-    //     succeedTxn = await checkTransaction(feed.id);
-    //     console.log('Txn status - ' + succeedTxn);
-    //     await sleep(2000);
-    // }
-    var balance = await checkBalance(wavesAccount);
-    console.log(balance);
-    console.log('Saving data - '+account+' - to account seed - '+seed);
-    // we gotta wait for 10 sec to transaction result
-    await sleep(20000);
-    balance = await checkBalance(wavesAccount);
-    console.log(balance);
-    const jsonResult = await saveEthToWaves(account, seed, wavesAccount);
-    console.log('result of the creation: ');
-    console.log(jsonResult);
-    // return jsonResult.id;
+async function generateScript(sign){
+    var script = `{-# STDLIB_VERSION 4 #-}
+    {-# CONTENT_TYPE DAPP #-}
+    {-# SCRIPT_TYPE ACCOUNT #-}
+    
+    
+    @Verifier(tx)
+    func verify() = {
+        let publicKeyEth = base64'${sign}'
+        ecrecover(keccak256(tx.bodyBytes), tx.proofs[0]) == publicKeyEth
+    }`;
+    var res = await fetch(nodeTestnetUrl+'/utils/script/compileCode', {
+        method: 'POST',
+        body: script
+    });
+    var json = await res.json();
+    var encoded = await json.script;
+    return encoded;
 }
 
-function checkWavesAccount(account) {
-
+async function setScriptWaves(sign, wavesAddress, seed) {
+    var script = await generateScript(sign);
+    console.log(script);
+    const signedTransfer = setScript({
+        chainId: 84,
+        sender: wavesAddress,
+        script: script,
+        fee: 1400000,
+    }, seed);
+    try {
+        var result = await broadcast(signedTransfer, nodeTestnetUrl);
+        return result;
+    } catch(e) {
+        console.log('Saving data acc error: ');
+        console.log(e);
+    }
+}
+async function setupWavesAccount(sign){
+    const instance = new Seed(Seed.create().phrase, 'T'.charCodeAt(0));
+    let { address, phrase: seed, keyPair } = instance;
+    console.log('Generated seed - '+seed);
+    console.log('Generated address - '+address);
+    const { publicKey, privateKey } = keyPair
+    console.log('Generated public key - '+publicKey);
+    var feed = await feedWavesAcc(distributorSeed, address);
+    console.log('Result of feeding waves account');
+    console.log(feed);
+    console.log('Waiting for txn to complete');
+    await sleep(30000);
+    var setScript = await setScriptWaves(sign, address, seed);
+    console.log('Check the result here');
+    console.log(`https://testnet.wavesexplorer.com/address/${address}/script`);
 }
 
 module.exports = {
-    createWavesAccount,
-    saveEthToWaves,
-    checkWavesAccount,
-    getSeed,
-    handleWavesIntegration
+    feedWavesAcc,
+    setScriptWaves,
+    sleep,
+    setupWavesAccount
 }
 

@@ -1,21 +1,35 @@
-# MetaMask-To-Waves
-This is a version of metamask dapp test application, cloned from the official repo (https://github.com/BboyAkers/simple-dapp-tutorial/tree/master/finished) and updated with some methods to interact with waves node.
-To check the methods - look closely to the /src/waves.js file.
+# MetaMask Test Dapp
 
- Original version hosted [right here](https://metamask.github.io/test-dapp/).
+This is a simple test dapp for use in MetaMask e2e tests and manual QA.
 
-## Preparations
-To use this dapp you need to run waves node. Look through tutorial to install node - https://docs.waves.tech/en/waves-node/how-to-install-a-node/how-to-install-a-node
-
-To run node you will need config file (waves.conf in /waves_node directory)
-You need to specify the password of your wallet, seed
-and [generate rest api-key] (https://docs.waves.tech/en/waves-node/node-api/api-key#set-api-key)
+Currently hosted [here](https://metamask.github.io/test-dapp/).
 
 ## Usage
 
-To run this application, you can use this shell command:
+If you wish to use this dapp in your e2e tests, install this package and set up a script of e.g. the following form:
 
 ```shell
-npm run start
+static-server node_modules/@metamask/test-dapp/dist --port 9011
 ```
-You will be able to open website on your localhost and watch for actions in browser console.
+
+## Development
+
+### Requires Manual Deployment
+
+After merging or pushing to `master`, please run `yarn deploy` in the package root directory if the contents of the `dist/` directory have changed.
+
+### Elements Must Be Selectable by XPath
+
+Consider that elements must be selectable by XPath. This means that appearances can be misleading.
+For example, consider this old bug:
+
+```html
+              <button class="btn btn-primary btn-lg btn-block mb-3" id="approveTokensWithoutGas" disabled>Approve Tokens
+                Without Gas</button>
+```
+
+This appears on the page as `Approve Tokens Without Gas`. In reality, the value included the whitespace on the second line, and caused XPath queries for the intended value to fail:
+
+```html
+Approve Tokens                Without Gas
+```
