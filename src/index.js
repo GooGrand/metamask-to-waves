@@ -1,6 +1,6 @@
 import MetaMaskOnboarding from '@metamask/onboarding'
 // eslint-disable-next-line camelcase
-import { encrypt, recoverPersonalSignature, recoverTypedSignatureLegacy, recoverTypedSignature, recoverTypedSignature_v4 } from 'eth-sig-util'
+import { recoverTypedSignature } from 'eth-sig-util'
 import { ethers } from 'ethers'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
@@ -31,57 +31,11 @@ const onboardButton = document.getElementById('connectButton')
 const getAccountsButton = document.getElementById('getAccounts')
 const getAccountsResults = document.getElementById('getAccountsResult')
 
-// Permissions Actions Section
-const requestPermissionsButton = document.getElementById('requestPermissions')
-const getPermissionsButton = document.getElementById('getPermissions')
-const permissionsResult = document.getElementById('permissionsResult')
-
-// Contract Section
-const deployButton = document.getElementById('deployButton')
-const depositButton = document.getElementById('depositButton')
-const withdrawButton = document.getElementById('withdrawButton')
-const contractStatus = document.getElementById('contractStatus')
-
-// Send Eth Section
-const sendButton = document.getElementById('sendButton')
-
-// Send Tokens Section
-const tokenAddress = document.getElementById('tokenAddress')
-const createToken = document.getElementById('createToken')
-const transferTokens = document.getElementById('transferTokens')
-const approveTokens = document.getElementById('approveTokens')
-const transferTokensWithoutGas = document.getElementById('transferTokensWithoutGas')
-const approveTokensWithoutGas = document.getElementById('approveTokensWithoutGas')
-
-// Encrypt / Decrypt Section
-const getEncryptionKeyButton = document.getElementById('getEncryptionKeyButton')
-const encryptMessageInput = document.getElementById('encryptMessageInput')
-const encryptButton = document.getElementById('encryptButton')
-const decryptButton = document.getElementById('decryptButton')
-const encryptionKeyDisplay = document.getElementById('encryptionKeyDisplay')
-const ciphertextDisplay = document.getElementById('ciphertextDisplay')
-const cleartextDisplay = document.getElementById('cleartextDisplay')
-
 // Ethereum Signature Section
-const ethSign = document.getElementById('ethSign')
-const ethSignResult = document.getElementById('ethSignResult')
-const personalSign = document.getElementById('personalSign')
-const personalSignResult = document.getElementById('personalSignResult')
-const personalSignVerify = document.getElementById('personalSignVerify')
-const personalSignVerifySigUtilResult = document.getElementById('personalSignVerifySigUtilResult')
-const personalSignVerifyECRecoverResult = document.getElementById('personalSignVerifyECRecoverResult')
-const signTypedData = document.getElementById('signTypedData')
-const signTypedDataResult = document.getElementById('signTypedDataResult')
-const signTypedDataVerify = document.getElementById('signTypedDataVerify')
-const signTypedDataVerifyResult = document.getElementById('signTypedDataVerifyResult')
 const signTypedDataV3 = document.getElementById('signTypedDataV3')
 const signTypedDataV3Result = document.getElementById('signTypedDataV3Result')
 const signTypedDataV3Verify = document.getElementById('signTypedDataV3Verify')
 const signTypedDataV3VerifyResult = document.getElementById('signTypedDataV3VerifyResult')
-const signTypedDataV4 = document.getElementById('signTypedDataV4')
-const signTypedDataV4Result = document.getElementById('signTypedDataV4Result')
-const signTypedDataV4Verify = document.getElementById('signTypedDataV4Verify')
-const signTypedDataV4VerifyResult = document.getElementById('signTypedDataV4VerifyResult')
 
 const initialize = async () => {
   try {
@@ -112,28 +66,8 @@ const initialize = async () => {
   let accountButtonsInitialized = false
 
   const accountButtons = [
-    deployButton,
-    depositButton,
-    withdrawButton,
-    sendButton,
-    createToken,
-    transferTokens,
-    approveTokens,
-    transferTokensWithoutGas,
-    approveTokensWithoutGas,
-    getEncryptionKeyButton,
-    encryptMessageInput,
-    encryptButton,
-    decryptButton,
-    ethSign,
-    personalSign,
-    personalSignVerify,
-    signTypedData,
-    signTypedDataVerify,
     signTypedDataV3,
     signTypedDataV3Verify,
-    signTypedDataV4,
-    signTypedDataV4Verify,
   ]
 
   const isMetaMaskConnected = () => accounts && accounts.length > 0
@@ -155,12 +89,6 @@ const initialize = async () => {
     }
   }
 
-  const clearTextDisplays = () => {
-    encryptionKeyDisplay.innerText = ''
-    encryptMessageInput.value = ''
-    ciphertextDisplay.innerText = ''
-    cleartextDisplay.innerText = ''
-  }
 
   const updateButtons = () => {
     const accountButtonsDisabled = !isMetaMaskInstalled() || !isMetaMaskConnected()
@@ -168,19 +96,8 @@ const initialize = async () => {
       for (const button of accountButtons) {
         button.disabled = true
       }
-      clearTextDisplays()
     } else {
-      deployButton.disabled = false
-      sendButton.disabled = false
-      createToken.disabled = false
-      personalSign.disabled = false
-      signTypedData.disabled = false
-      getEncryptionKeyButton.disabled = false
-      ethSign.disabled = false
-      personalSign.disabled = false
-      signTypedData.disabled = false
       signTypedDataV3.disabled = false
-      signTypedDataV4.disabled = false
     }
 
     if (!isMetaMaskInstalled()) {
@@ -207,164 +124,6 @@ const initialize = async () => {
     }
     accountButtonsInitialized = true
 
-    /**
-     * Contract Interactions
-     */
-
-    deployButton.onclick = async () => {
-      let contract
-      contractStatus.innerHTML = 'Deploying'
-
-      try {
-        contract = await piggybankFactory.deploy()
-        await contract.deployTransaction.wait()
-      } catch (error) {
-        contractStatus.innerHTML = 'Deployment Failed'
-        throw error
-      }
-
-      if (contract.address === undefined) {
-        return
-      }
-
-      console.log(`Contract mined! address: ${contract.address} transactionHash: ${contract.transactionHash}`)
-      contractStatus.innerHTML = 'Deployed'
-      depositButton.disabled = false
-      withdrawButton.disabled = false
-
-      depositButton.onclick = async () => {
-        contractStatus.innerHTML = 'Deposit initiated'
-        const result = await contract.deposit({
-          from: accounts[0],
-          value: '0x3782dace9d900000',
-        })
-        console.log(result)
-        contractStatus.innerHTML = 'Deposit completed'
-      }
-
-      withdrawButton.onclick = async () => {
-        const result = await contract.withdraw(
-          '0xde0b6b3a7640000',
-          { from: accounts[0] },
-        )
-        console.log(result)
-        contractStatus.innerHTML = 'Withdrawn'
-      }
-
-      console.log(contract)
-    }
-
-    /**
-     * Sending ETH
-     */
-
-    sendButton.onclick = async () => {
-      const result = await ethersProvider.getSigner().sendTransaction({
-        to: '0x2f318C334780961FB129D2a6c30D0763d9a5C970',
-        value: '0x29a2241af62c0000',
-        gasLimit: 21000,
-        gasPrice: 20000000000,
-      })
-      console.log(result)
-    }
-
-    /**
-     * ERC20 Token
-     */
-
-    createToken.onclick = async () => {
-      const _initialAmount = 100
-      const _tokenName = 'TST'
-      const _decimalUnits = 0
-      const _tokenSymbol = 'TST'
-
-      try {
-        const contract = await hstFactory.deploy(
-          _initialAmount,
-          _tokenName,
-          _decimalUnits,
-          _tokenSymbol,
-        )
-        await contract.deployTransaction.wait()
-        if (contract.address === undefined) {
-          return undefined
-        }
-
-        console.log(`Contract mined! address: ${contract.address} transactionHash: ${contract.transactionHash}`)
-        tokenAddress.innerHTML = contract.address
-        transferTokens.disabled = false
-        approveTokens.disabled = false
-        transferTokensWithoutGas.disabled = false
-        approveTokensWithoutGas.disabled = false
-
-        transferTokens.onclick = async () => {
-          const result = await contract.transfer('0x2f318C334780961FB129D2a6c30D0763d9a5C970', '15000', {
-            from: accounts[0],
-            gasLimit: 60000,
-            gasPrice: '20000000000',
-          })
-          console.log('result', result)
-        }
-
-        approveTokens.onclick = async () => {
-          const result = await contract.approve('0x9bc5baF874d2DA8D216aE9f137804184EE5AfEF4', '70000', {
-            from: accounts[0],
-            gasLimit: 60000,
-            gasPrice: '20000000000',
-          })
-          console.log(result)
-        }
-
-        transferTokensWithoutGas.onclick = async () => {
-          const result = await contract.transfer('0x2f318C334780961FB129D2a6c30D0763d9a5C970', '15000', {
-            gasPrice: '20000000000',
-          })
-          console.log('result', result)
-        }
-
-        approveTokensWithoutGas.onclick = async () => {
-          const result = await contract.approve('0x2f318C334780961FB129D2a6c30D0763d9a5C970', '70000', {
-            gasPrice: '20000000000',
-          })
-          console.log(result)
-        }
-
-        return contract
-      } catch (error) {
-        tokenAddress.innerHTML = 'Creation Failed'
-        throw error
-      }
-    }
-
-    /**
-     * Permissions
-     */
-
-    requestPermissionsButton.onclick = async () => {
-      try {
-        const permissionsArray = await ethereum.request({
-          method: 'wallet_requestPermissions',
-          params: [{ eth_accounts: {} }],
-        })
-        permissionsResult.innerHTML = getPermissionsDisplayString(permissionsArray)
-      } catch (err) {
-        console.error(err)
-        permissionsResult.innerHTML = `Error: ${err.message}`
-      }
-    }
-
-    getPermissionsButton.onclick = async () => {
-      try {
-        const permissionsArray = await ethereum.request({
-          method: 'wallet_getPermissions',
-        })
-        permissionsResult.innerHTML = getPermissionsDisplayString(permissionsArray)
-      } catch (err) {
-        console.error(err)
-        permissionsResult.innerHTML = `Error: ${err.message}`
-      }
-    }
-
     getAccountsButton.onclick = async () => {
       try {
         const _accounts = await ethereum.request({
@@ -376,63 +135,7 @@ const initialize = async () => {
         getAccountsResults.innerHTML = `Error: ${err.message}`
       }
     }
-
-    /**
-     * Encrypt / Decrypt
-     */
-
-    getEncryptionKeyButton.onclick = async () => {
-      try {
-        encryptionKeyDisplay.innerText = await ethereum.request({
-          method: 'eth_getEncryptionPublicKey',
-          params: [accounts[0]],
-        })
-        encryptMessageInput.disabled = false
-      } catch (error) {
-        encryptionKeyDisplay.innerText = `Error: ${error.message}`
-        encryptMessageInput.disabled = true
-        encryptButton.disabled = true
-        decryptButton.disabled = true
-      }
-    }
-
-    encryptMessageInput.onkeyup = () => {
-      if (
-        !getEncryptionKeyButton.disabled &&
-        encryptMessageInput.value.length > 0
-      ) {
-        if (encryptButton.disabled) {
-          encryptButton.disabled = false
-        }
-      } else if (!encryptButton.disabled) {
-        encryptButton.disabled = true
-      }
-    }
-
-    encryptButton.onclick = () => {
-      try {
-        ciphertextDisplay.innerText = stringifiableToHex(encrypt(
-          encryptionKeyDisplay.innerText,
-          { 'data': encryptMessageInput.value },
-          'x25519-xsalsa20-poly1305',
-        ))
-        decryptButton.disabled = false
-      } catch (error) {
-        ciphertextDisplay.innerText = `Error: ${error.message}`
-        decryptButton.disabled = true
-      }
-    }
-
-    decryptButton.onclick = async () => {
-      try {
-        cleartextDisplay.innerText = await ethereum.request({
-          method: 'eth_decrypt',
-          params: [ciphertextDisplay.innerText, ethereum.selectedAddress],
-        })
-      } catch (error) {
-        cleartextDisplay.innerText = `Error: ${error.message}`
-      }
-    }
+  
   }
 
 
@@ -559,74 +262,7 @@ const initialize = async () => {
   }
 
 
-  /**
-   *  Sign Typed Data V4 Verification
-   */
-  signTypedDataV4Verify.onclick = async () => {
-    const networkId = parseInt(networkDiv.innerHTML, 10)
-    const chainId = parseInt(chainIdDiv.innerHTML, 16) || networkId
-    const msgParams = {
-      domain: {
-        chainId,
-        name: 'Company',
-        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
-        version: '1',
-      },
-      message: {
-        contents: 'Hello, Bob!',
-        from: {
-          name: 'Cow',
-          wallets: [
-            '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
-            '0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF',
-          ],
-        },
-        to: [
-          {
-            name: 'Bob',
-            wallets: [
-              '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
-              '0xB0BdaBea57B0BDABeA57b0bdABEA57b0BDabEa57',
-              '0xB0B0b0b0b0b0B000000000000000000000000000',
-            ],
-          },
-        ],
-      },
-      primaryType: 'Mail',
-      types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
-        Group: [{ name: 'name', type: 'string' }, { name: 'members', type: 'Person[]' }],
-        Mail: [
-          { name: 'from', type: 'Person' },
-          { name: 'to', type: 'Person[]' },
-          { name: 'contents', type: 'string' },
-        ],
-        Person: [{ name: 'name', type: 'string' }, { name: 'wallets', type: 'address[]' }],
-      },
-    }
-    try {
-      const from = accounts[0]
-      const sign = signTypedDataV4Result.innerHTML
-      const recoveredAddr = recoverTypedSignature_v4({
-        'data': msgParams,
-        'sig': sign,
-      })
-      if (toChecksumAddress(recoveredAddr) === toChecksumAddress(from)) {
-        console.log(`Successfully verified signer as ${recoveredAddr}`)
-        signTypedDataV4VerifyResult.innerHTML = recoveredAddr
-      } else {
-        console.log(`Failed to verify signer when comparing ${recoveredAddr} to ${from}`)
-      }
-    } catch (err) {
-      console.error(err)
-      signTypedDataV4VerifyResult.innerHTML = `Error: ${err.message}`
-    }
-  }
+  
   function handleNewAccounts (newAccounts) {
     accounts = newAccounts
     accountsDiv.innerHTML = accounts
