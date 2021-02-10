@@ -45,7 +45,6 @@ async function generateScript(sign){
 
 async function setScriptWaves(sign, wavesAddress, seed) {
     var script = await generateScript(sign);
-    console.log(script);
     const signedTransfer = setScript({
         chainId: 84,
         sender: wavesAddress,
