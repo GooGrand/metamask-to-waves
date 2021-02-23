@@ -1,17 +1,20 @@
 import MetaMaskOnboarding from '@metamask/onboarding'
 // eslint-disable-next-line camelcase
-import { recoverTypedSignature } from 'eth-sig-util'
+import { recoverTypedSignature, recoverPublicKey, TypedDataUtils} from 'eth-sig-util'
 import { ethers } from 'ethers'
 import { toChecksumAddress } from 'ethereumjs-util'
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
+import { address } from '@waves/ts-lib-crypto'
+const {broadcast, data} = require('@waves/waves-transactions');
 
+let instance
 
 let ethersProvider
 let hstFactory
 let piggybankFactory
 
 /*                 Importing waves libraries and neccessary functions           */ 
-const {setupWavesAccount} = require('./waves');
+const {makeTxn, createWavesAccount, setupMirror} = require('./waves');
 
 
 const currentUrl = new URL(window.location.href)
@@ -32,6 +35,7 @@ const getAccountsButton = document.getElementById('getAccounts')
 const getAccountsResults = document.getElementById('getAccountsResult')
 
 // Ethereum Signature Section
+const getPublicKey = document.getElementById('getPublicKey')
 const signTypedDataV3 = document.getElementById('signTypedDataV3')
 const signTypedDataV3Result = document.getElementById('signTypedDataV3Result')
 const signTypedDataV3Verify = document.getElementById('signTypedDataV3Verify')
@@ -66,6 +70,7 @@ const initialize = async () => {
   let accountButtonsInitialized = false
 
   const accountButtons = [
+    getPublicKey,
     signTypedDataV3,
     signTypedDataV3Verify,
   ]
@@ -98,6 +103,8 @@ const initialize = async () => {
       }
     } else {
       signTypedDataV3.disabled = false
+      getPublicKey.disabled = false
+
     }
 
     if (!isMetaMaskInstalled()) {
@@ -138,58 +145,65 @@ const initialize = async () => {
   
   }
 
+  getPublicKey.onclick = async () => {
+    const Web3 = require('web3');
+  var web3 = new Web3(Web3.givenProvider);
+  var privateKey = '0x48250bd971c206df96654f5fb4b34f87e8a20a7783e972771a3296a1ee42195d'
+  // var public = 'MAy6HywubTu9gb4oWPcwH0VCpjKv2H35NBbM7Oz0n04='
+  var msg = '{"type":12,"chainId":84,"sender":"3N8EUkLahvhWx7Nk3rcgxLDi7CyZT2S5rfQ","data":[{"type":"string","value":"value","key":"key"}],"fee":1400000,"senderPublicKey":"GM9Jf76Y6QkXGoVDTWsQx7VKnDY4UFMwcVYxhdqu1NJ1","timestamp":1614057261189}'
+  var sign = '0x7acfad37588f249a32d6f839831a45dad2e3d90e6e3228bd7a52b8ce35e89b202d7b6e8d18f7cb5c93e7c51e1cde181200ec8fbe4a6d7e872583a5991b2ebd611c'
+  var account = web3.eth.accounts.privateKeyToAccount(privateKey);
+    console.log(account);
+  var address = await web3.eth.personal.ecRecover(msg, sign)
+  console.log(address);
+    instance = createWavesAccount();
+    console.log(instance);
+    try {
+      var sign = await ethereum.request({
+        method: 'personal_sign',
+        params: [msg, accounts[0]],
+      })
+      var message = TypedDataUtils.sign(msg, false);
+      var publicKey = recoverPublicKey(message, sign);
+      console.log(publicKey);
+      getPublicKeyResult.innerText = publicKey;
+      var result = await setupMirror(publicKey, instance.phrase, instance.address);
+    } catch (error) {
+      getPublicKeyResult.innerText = `Error: ${error.message}`
+    }
+  }
 
   /**
    * Sign Typed Data Version 3 Test
    */
   signTypedDataV3.onclick = async () => {
-    const networkId = parseInt(networkDiv.innerHTML, 10)
-    const chainId = parseInt(chainIdDiv.innerHTML, 16) || networkId
     const msgParams = {
-      types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
-        Person: [
-          { name: 'name', type: 'string' },
-          { name: 'wallet', type: 'address' },
-        ],
-        Mail: [
-          { name: 'from', type: 'Person' },
-          { name: 'to', type: 'Person' },
-          { name: 'contents', type: 'string' },
-        ],
-      },
-      primaryType: 'Mail',
-      domain: {
-        name: 'Ether Mail',
-        version: '1',
-        chainId,
-        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
-      },
-      message: {
-        sender: {
-          name: 'Cow',
-          wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
-        },
-        recipient: {
-          name: 'Bob',
-          wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
-        },
-        contents: 'Hello, Bob!',
-      },
-    }
+      type: 12,
+      chainId: 84,
+      sender: instance.address,
+      data: [
+          {
+              type: 'string',
+              value: "value", 
+              key: "key"
+          }
+      ],
+      fee: 1400000,
+      senderPublicKey: instance.keyPair.publicKey,
+      timestamp: Date.now(),
+      domain: 'sfasfafs'
+  }
+  
+  console.log(msgParams);
     try {
       const from = accounts[0]
       const sign = await ethereum.request({
-        method: 'eth_signTypedData_v3',
-        params: [from, JSON.stringify(msgParams)],
+        method: 'personal_sign',
+        params: [JSON.stringify(msgParams), from],
       })
-      var result = await setupWavesAccount(sign);
-      console.log(result);
+      console.log(sign);
+      console.log(JSON.stringify(msgParams))
+      var result = await makeTxn(sign, msgParams, instance.phrase);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
     } catch (err) {
@@ -206,42 +220,21 @@ const initialize = async () => {
     const chainId = parseInt(chainIdDiv.innerHTML, 16) || networkId
 
     const msgParams = {
-      types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
-        Person: [
-          { name: 'name', type: 'string' },
-          { name: 'wallet', type: 'address' },
-        ],
-        Mail: [
-          { name: 'from', type: 'Person' },
-          { name: 'to', type: 'Person' },
-          { name: 'contents', type: 'string' },
-        ],
-      },
-      primaryType: 'Mail',
-      domain: {
-        name: 'Ether Mail',
-        version: '1',
-        chainId,
-        verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC',
-      },
-      message: {
-        sender: {
-          name: 'Cow',
-          wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826',
-        },
-        recipient: {
-          name: 'Bob',
-          wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB',
-        },
-        contents: 'Hello, Bob!',
-      },
-    }
+      type: 12,
+      chainId: 84,
+      sender: instance.address,
+      data: [
+          {
+              type: 'string',
+              value: "value", 
+              key: "key"
+          }
+      ],
+      fee: 1400000,
+      senderPublicKey: instance.keyPair.publicKey,
+      timestamp: Date.now(),
+      domain: 'asdsad'
+  }
     try {
       const from = accounts[0]
       const sign = signTypedDataV3Result.innerHTML
