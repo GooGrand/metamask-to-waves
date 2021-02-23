@@ -1,8 +1,10 @@
 import MetaMaskOnboarding from '@metamask/onboarding'
 // eslint-disable-next-line camelcase
-import { recoverTypedSignature, recoverPublicKey, TypedDataUtils} from 'eth-sig-util'
+import { recoverTypedSignature, recoverPublicKey, extractPublicKey} from 'eth-sig-util'
 import { ethers } from 'ethers'
-import { toChecksumAddress } from 'ethereumjs-util'
+import { toChecksumAddress, ecsign, ecrecover} from 'ethereumjs-util'
+const base58 = require('base58-encode');
+const keccak256 = require('keccak256')
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
 import { address } from '@waves/ts-lib-crypto'
 const {broadcast, data} = require('@waves/waves-transactions');
@@ -14,7 +16,7 @@ let hstFactory
 let piggybankFactory
 
 /*                 Importing waves libraries and neccessary functions           */ 
-const {makeTxn, createWavesAccount, setupMirror} = require('./waves');
+const {makeTxn, createWavesAccount, setupMirror, generateSignature} = require('./waves');
 
 
 const currentUrl = new URL(window.location.href)
@@ -40,6 +42,11 @@ const signTypedDataV3 = document.getElementById('signTypedDataV3')
 const signTypedDataV3Result = document.getElementById('signTypedDataV3Result')
 const signTypedDataV3Verify = document.getElementById('signTypedDataV3Verify')
 const signTypedDataV3VerifyResult = document.getElementById('signTypedDataV3VerifyResult')
+
+
+// Initialize web3 
+const Web3 = require('web3');
+var web3 = new Web3(Web3.givenProvider);
 
 const initialize = async () => {
   try {
@@ -146,38 +153,11 @@ const initialize = async () => {
   }
 
   getPublicKey.onclick = async () => {
-    const Web3 = require('web3');
-  var web3 = new Web3(Web3.givenProvider);
-  var privateKey = '0x48250bd971c206df96654f5fb4b34f87e8a20a7783e972771a3296a1ee42195d'
-  // var public = 'MAy6HywubTu9gb4oWPcwH0VCpjKv2H35NBbM7Oz0n04='
-  var msg = '{"type":12,"chainId":84,"sender":"3N8EUkLahvhWx7Nk3rcgxLDi7CyZT2S5rfQ","data":[{"type":"string","value":"value","key":"key"}],"fee":1400000,"senderPublicKey":"GM9Jf76Y6QkXGoVDTWsQx7VKnDY4UFMwcVYxhdqu1NJ1","timestamp":1614057261189}'
-  var sign = '0x7acfad37588f249a32d6f839831a45dad2e3d90e6e3228bd7a52b8ce35e89b202d7b6e8d18f7cb5c93e7c51e1cde181200ec8fbe4a6d7e872583a5991b2ebd611c'
-  var account = web3.eth.accounts.privateKeyToAccount(privateKey);
-    console.log(account);
-  var address = await web3.eth.personal.ecRecover(msg, sign)
-  console.log(address);
-    instance = createWavesAccount();
-    console.log(instance);
-    try {
-      var sign = await ethereum.request({
-        method: 'personal_sign',
-        params: [msg, accounts[0]],
-      })
-      var message = TypedDataUtils.sign(msg, false);
-      var publicKey = recoverPublicKey(message, sign);
-      console.log(publicKey);
-      getPublicKeyResult.innerText = publicKey;
-      var result = await setupMirror(publicKey, instance.phrase, instance.address);
-    } catch (error) {
-      getPublicKeyResult.innerText = `Error: ${error.message}`
+    if(!instance) {
+      instance = createWavesAccount();
     }
-  }
-
-  /**
-   * Sign Typed Data Version 3 Test
-   */
-  signTypedDataV3.onclick = async () => {
-    const msgParams = {
+    console.log(instance);
+    var msg = {  
       type: 12,
       chainId: 84,
       sender: instance.address,
@@ -189,21 +169,74 @@ const initialize = async () => {
           }
       ],
       fee: 1400000,
+      feeAssetId: null, 
       senderPublicKey: instance.keyPair.publicKey,
-      timestamp: Date.now(),
-      domain: 'sfasfafs'
+      timestamp: 1614111284116,
+    }
+
+  var account = await web3.eth.accounts.privateKeyToAccount('912acd2776d42fe704325d523a7cca93890c939960ba2b3b172ddef015c8448c')
+  console.log('txn - ' + JSON.stringify(msg));
+  console.log(keccak256(JSON.stringify(msg)));
+  var sign = await ecsign(keccak256(JSON.stringify(msg)), web3.utils.hexToBytes('0x912acd2776d42fe704325d523a7cca93890c939960ba2b3b172ddef015c8448c'))
+  console.log(sign);
+  var sum = base58(Buffer.concat([sign.r, sign.s, new Buffer.from([sign.v])], 65))
+  console.log(sum);
+
+    try {
+      var sign = await ethereum.request({
+        method: 'personal_sign',
+        params: [accounts[0], JSON.stringify(msg)],
+      })
+      console.log('signature');
+      console.log(sign);
+      var publicKey = extractPublicKey({"data":JSON.stringify(msg), "sig":sign});
+      var publicKey = Buffer.from(publicKey, 'hex').toString('base64')
+      console.log('public key');
+      console.log(publicKey);
+      console.log(JSON.stringify(msg))
+      getPublicKeyResult.innerText = publicKey;
+      var result = await setupMirror(publicKey, instance.phrase, instance.address);
+    } catch (error) {
+      getPublicKeyResult.innerText = `Error: ${error.message}`
+    }
   }
+
+  /**
+   * Sign Typed Data Version 3 Test
+   */
+  signTypedDataV3.onclick = async () => {
+    const msgParams = {  
+      type: 12,
+      chainId: 84,
+      sender: instance.address,
+      data: [
+          {
+              type: 'string',
+              value: "value", 
+              key: "key"
+          }
+      ],
+      fee: 1400000,
+      feeAssetId: null, 
+      senderPublicKey: instance.keyPair.publicKey,
+      timestamp: 1614111284116,
+    }
   
   console.log(msgParams);
     try {
       const from = accounts[0]
       const sign = await ethereum.request({
         method: 'personal_sign',
-        params: [JSON.stringify(msgParams), from],
+        params: [from, JSON.stringify(msgParams)],
       })
+      console.log(JSON.stringify(sign))
+      console.log('signature when signed');
       console.log(sign);
       console.log(JSON.stringify(msgParams))
-      var result = await makeTxn(sign, msgParams, instance.phrase);
+      var messageString = JSON.stringify(msgParams)
+      var modifiedMessage = "\x19Ethereum Signed Message:\n" + messageString.length + messageString
+      console.log(modifiedMessage);
+      var result = await makeTxn(sign, modifiedMessage, instance.phrase);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
     } catch (err) {

@@ -8,6 +8,7 @@ const base58 = require('base58-encode');
 const eutil = require('ethereumjs-util')
 
 
+
 const sleep = m => new Promise(r => setTimeout(r, m));
 
 async function feedWavesAcc(fromAcc, toAcc) {
@@ -26,7 +27,7 @@ async function feedWavesAcc(fromAcc, toAcc) {
     }
 }
 
-async function generateScript(sign){
+async function generateScript(pub){
     var script = `{-# STDLIB_VERSION 4 #-}
     {-# CONTENT_TYPE DAPP #-}
     {-# SCRIPT_TYPE ACCOUNT #-}
@@ -34,8 +35,8 @@ async function generateScript(sign){
     
     @Verifier(tx)
     func verify() = {
-        let publicKeyEth = base64'${sign}'
-        ecrecover(keccak256(tx.bodyBytes), tx.proofs[0]) == publicKeyEth
+        let publicKeyEth = base64'${pub}'
+        ecrecover(keccak256(base64'GQ=='+toBytes("Ethereum Signed Message:\n")+toBytes(size(tx.bodyBytes))+tx.bodyBytes), tx.proofs[0]) == publicKeyEth
     }`;
     var res = await fetch(nodeTestnetUrl+'/utils/script/compileCode', {
         method: 'POST',
@@ -43,11 +44,12 @@ async function generateScript(sign){
     });
     var json = await res.json();
     var encoded = await json.script;
+    console.log(encoded);
     return encoded;
 }
 
-async function setScriptWaves(sign, wavesAddress, seed) {
-    var script = await generateScript(sign);
+async function setScriptWaves(pub, wavesAddress, seed) {
+    var script = await generateScript(pub);
     const signedTransfer = setScript({
         chainId: 84,
         sender: wavesAddress,
@@ -64,10 +66,10 @@ async function setScriptWaves(sign, wavesAddress, seed) {
 }
 
 async function addData(seed, sign, msg) {
-    encoded = base58(new Buffer.from(sign));
+    var encoded = base58(sign);
     const signedTransfer = data(msg); // we need to make proofs array
-    signedTransfer.proofs.unshift(encoded); 
-    console.log(signedTransfer);
+    signedTransfer.proofs = [encoded]; 
+    console.log(sign);
     try {
         var result = await broadcast(signedTransfer, nodeTestnetUrl);
         return result;
@@ -104,11 +106,13 @@ async function setupMirror(pub, seed, address){
 }
 function generateSignature(sign){
     sign = eutil.fromRpcSig(sign);
+    console.log(sign);
     var newArray = new Uint8Array(1);
     sign2arrays = concatTypedArrays(sign.r, sign.s)
     newArray[0] = sign.v;
     sign = concatTypedArrays(sign2arrays,newArray)
-    console.log(base58(new Buffer.from(sign)));
+    console.log('signature after base58');
+    console.log(base58(sign));
     return sign;
 }
 
@@ -116,7 +120,6 @@ async function makeTxn(sign, txn, seed){
     sign = generateSignature(sign);
     var data = await addData(seed, sign, txn)
     console.log(data);
-
 }
 
 async function addToAddresses(ethAddress, wavesAddress, seed) {
@@ -147,10 +150,28 @@ async function addToAddresses(ethAddress, wavesAddress, seed) {
     }
 }
 
+async function invoke(){
+    var signedTxn = invokeScript({
+        dApp: '3MtGV4ajRGTXLPYz2C7vGWHQu4WK1RJhCU',
+        call: {
+            function: "call",
+            args: []
+        }
+    }, distributorSeed)
+    try {
+        var result = await broadcast(signedTxn, nodeTestnetUrl);
+        return result;
+    } catch(e) {
+        console.log('saving addresses error: ');
+        console.log(e);
+    }
+}
+
 module.exports = {
     makeTxn,
     addToAddresses,
     createWavesAccount,
-    setupMirror
+    setupMirror,
+    generateSignature
 }
 
