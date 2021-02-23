@@ -5,12 +5,14 @@ const headers = {
     };
 const nodeUrl  = "http://127.0.0.1:6869"
 const nodeTestnetUrl = 'https://nodes-testnet.wavesnodes.com';
-const distributorSeed = 'light vicious wild scrub silent poem bachelor gas entire actual artwork season bracket range ozone';
-const distributorPrivateKey = '7UfmpFuiWfbEizr2JN3trWhmoBPfwx5WfEXxGD2XkNpT';
+const distributorSeed = 'wire proof toe clerk convince mother anchor camera fish depend silk quick keen boil area';
+const distributorPrivateKey = 'GfSQqHJabws8V89ZRY8qsvznc4Ju9CrXb1H4Tc6ZrV9j';
+const dappAddress = '3NCUH4Z4WnFqmxZ27uSkiunPeupYQWU2iDT';
 module.exports = {
     distributorSeed,
     distributorPrivateKey,
     headers,
     nodeTestnetUrl,
-    nodeUrl
+    nodeUrl,
+    dappAddress
 }
