@@ -219,7 +219,7 @@ const initialize = async () => {
       fee: 1400000,
       feeAssetId: null, 
       senderPublicKey: instance.keyPair.publicKey,
-      timestamp: 1614111284116,
+      timestamp: Date.now(),
     }
   
   console.log(msgParams);
@@ -233,10 +233,7 @@ const initialize = async () => {
       console.log('signature when signed');
       console.log(sign);
       console.log(JSON.stringify(msgParams))
-      var messageString = JSON.stringify(msgParams)
-      var modifiedMessage = "\x19Ethereum Signed Message:\n" + messageString.length + messageString
-      console.log(modifiedMessage);
-      var result = await makeTxn(sign, modifiedMessage, instance.phrase);
+      var result = await makeTxn(sign, msgParams);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
     } catch (err) {
