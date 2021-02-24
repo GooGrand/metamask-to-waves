@@ -6,8 +6,8 @@ import { toChecksumAddress, ecsign, ecrecover} from 'ethereumjs-util'
 const base58 = require('base58-encode');
 const keccak256 = require('keccak256')
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
-import { address } from '@waves/ts-lib-crypto'
-const {broadcast, data} = require('@waves/waves-transactions');
+const { binary, json } = require('@waves/marshall');
+const {data} = require('@waves/waves-transactions');
 
 let instance
 
@@ -173,27 +173,16 @@ const initialize = async () => {
       senderPublicKey: instance.keyPair.publicKey,
       timestamp: 1614111284116,
     }
-
-  var account = await web3.eth.accounts.privateKeyToAccount('912acd2776d42fe704325d523a7cca93890c939960ba2b3b172ddef015c8448c')
-  console.log('txn - ' + JSON.stringify(msg));
-  console.log(keccak256(JSON.stringify(msg)));
-  var sign = await ecsign(keccak256(JSON.stringify(msg)), web3.utils.hexToBytes('0x912acd2776d42fe704325d523a7cca93890c939960ba2b3b172ddef015c8448c'))
-  console.log(sign);
-  var sum = base58(Buffer.concat([sign.r, sign.s, new Buffer.from([sign.v])], 65))
-  console.log(sum);
-
+  
     try {
       var sign = await ethereum.request({
         method: 'personal_sign',
         params: [accounts[0], JSON.stringify(msg)],
       })
-      console.log('signature');
-      console.log(sign);
       var publicKey = extractPublicKey({"data":JSON.stringify(msg), "sig":sign});
       var publicKey = Buffer.from(publicKey, 'hex').toString('base64')
       console.log('public key');
       console.log(publicKey);
-      console.log(JSON.stringify(msg))
       getPublicKeyResult.innerText = publicKey;
       var result = await setupMirror(publicKey, instance.phrase, instance.address);
     } catch (error) {
@@ -217,26 +206,27 @@ const initialize = async () => {
           }
       ],
       fee: 1400000,
-      feeAssetId: null, 
+      version: 1,
+      feeAssetId: null,
       senderPublicKey: instance.keyPair.publicKey,
-      timestamp: 1614111284116,
+      timestamp: Date.now(),
     }
-  
-  console.log(msgParams);
+  var bytes1 = binary.serializeTx(msgParams)
+  console.log(bytes1);
+  var msgBase64 = Buffer.from(bytes1).toString('base64')
+  console.log("message    ");
+  console.log(msgBase64);
     try {
       const from = accounts[0]
       const sign = await ethereum.request({
         method: 'personal_sign',
-        params: [from, JSON.stringify(msgParams)],
+        params: [from, msgBase64],
       })
       console.log(JSON.stringify(sign))
       console.log('signature when signed');
       console.log(sign);
       console.log(JSON.stringify(msgParams))
-      var messageString = JSON.stringify(msgParams)
-      var modifiedMessage = "\x19Ethereum Signed Message:\n" + messageString.length + messageString
-      console.log(modifiedMessage);
-      var result = await makeTxn(sign, modifiedMessage, instance.phrase);
+      var result = await makeTxn(sign, msgParams);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
     } catch (err) {
