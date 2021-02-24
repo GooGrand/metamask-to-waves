@@ -3,7 +3,7 @@ const {setScript, transfer, broadcast, invokeScript, data} = require('@waves/wav
 const libCrypto = require('@waves/waves-transactions').libs.crypto
 const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
 const base58 = require('base58-encode');
-
+const { binary, json } = require('@waves/marshall');
 // Local imports
 const {distributorSeed, headers, nodeUrl, nodeTestnetUrl, distributorPrivateKey, dappAddress} = require('./config');
 const {generateSignature} = require('./utils')
@@ -44,13 +44,11 @@ async function generateScript(pub){
     {-# CONTENT_TYPE DAPP #-}
     {-# SCRIPT_TYPE ACCOUNT #-}
     
-    
     @Verifier(tx)
     func verify() = {
         let publicKeyEth = base64'${pub}'
-        ecrecover(toBytes(toUtf8String(base64'GQ')+toUtf8String(base64'RXRoZXJldW0gU2lnbmVkIE1lc3NhZ2U6Cg==')+toString(size(tx.bodyBytes))+toUtf8String(tx.bodyBytes)), tx.proofs[0]) == publicKeyEth
+        ecrecover(keccak256(toBytes(toBase64String(base64'GQ') + toBase64String(base64'RXRoZXJldW0gU2lnbmVkIE1lc3NhZ2U6Cg==') + toString(size(tx.bodyBytes)) + toBase64String(tx.bodyBytes))), tx.proofs[0]) == publicKeyEth
     }`;
-    console.log(script);
     var res = await fetch(nodeTestnetUrl+'/utils/script/compileCode', {
         method: 'POST',
         body: script
@@ -92,11 +90,9 @@ async function setScriptWaves(pub, wavesAddress, seed) {
  */
 async function addData(sign, msg) {
     var encoded = base58(sign);
-    const signedTransfer = data(msg); // we need to make proofs array
-    signedTransfer.proofs = [encoded]; 
-    console.log(sign);
+    msg.proofs = [encoded]; 
     try {
-        var result = await broadcast(signedTransfer, nodeTestnetUrl);
+        var result = await broadcast(msg, nodeTestnetUrl);
         return result;
     } catch(e) {
         console.log('Saving data acc error: ');
