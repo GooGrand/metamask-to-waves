@@ -25,14 +25,15 @@ module.exports = {
      */
     generateSignature(sign){
         sign = eutil.fromRpcSig(sign);
-        console.log(sign);
+        var r = base58(sign.r)
+        // sign2arrays = concatTypedArrays(sign.r, sign.s)
         var newArray = new Uint8Array(1);
-        sign2arrays = concatTypedArrays(sign.r, sign.s)
         newArray[0] = sign.v;
-        sign = concatTypedArrays(sign2arrays,newArray)
-        console.log('signature after base58');
-        console.log(base58(sign));
-        return base58(sign);
+        sign = concatTypedArrays(sign.s, newArray)
+        var sv = base58(sign)
+        // console.log('signature after base58');
+        // console.log(base58(sign));
+        return [r, sv];
     },
     generateLink(link, text) {
         var linkTag = document.createElement('a');
@@ -42,6 +43,12 @@ module.exports = {
         linkTag.target = "_blank"
         linkTag.href = link
         return linkTag
+    },
+    generateError(text) {
+        var error = document.createElement('p');
+        error.className = "info-text alert alert-warning";
+        error.appendChild(document.createTextNode(text));
+        return error
     }
 
 
