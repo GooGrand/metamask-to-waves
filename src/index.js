@@ -1,10 +1,14 @@
 import MetaMaskOnboarding from '@metamask/onboarding'
 // eslint-disable-next-line camelcase
-import { recoverTypedSignature, extractPublicKey} from 'eth-sig-util'
+import { recoverTypedSignature, recoverPublicKey, extractPublicKey} from 'eth-sig-util'
 import { ethers } from 'ethers'
-import { toChecksumAddress} from 'ethereumjs-util'
+import { toChecksumAddress, ecsign, ecrecover} from 'ethereumjs-util'
+const base58 = require('base58-encode');
+const keccak256 = require('keccak256')
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
-const { binary} = require('@waves/marshall');
+const { binary, json } = require('@waves/marshall');
+const {data} = require('@waves/waves-transactions');
+const {generateLink} = require('./utils')
 
 let instance
 
@@ -12,8 +16,10 @@ let ethersProvider
 let hstFactory
 let piggybankFactory
 
+
+
 /*                 Importing waves libraries and neccessary functions           */
-const {makeTxn, createWavesAccount, setupMirror} = require('./waves');
+const {makeTxn, createWavesAccount, setupMirror, feedWavesAcc} = require('./waves');
 
 
 const currentUrl = new URL(window.location.href)
@@ -23,22 +29,15 @@ const forwarderOrigin = currentUrl.hostname === 'localhost'
 
 const { isMetaMaskInstalled } = MetaMaskOnboarding
 
-// Dapp Status Section
-const networkDiv = document.getElementById('network')
-const chainIdDiv = document.getElementById('chainId')
 const accountsDiv = document.getElementById('accounts')
 
 // Basic Actions Section
 const onboardButton = document.getElementById('connectButton')
-const getAccountsButton = document.getElementById('getAccounts')
-const getAccountsResults = document.getElementById('getAccountsResult')
 
 // Ethereum Signature Section
 const getPublicKey = document.getElementById('getPublicKey')
 const signTypedDataV3 = document.getElementById('signTypedDataV3')
 const signTypedDataV3Result = document.getElementById('signTypedDataV3Result')
-const signTypedDataV3Verify = document.getElementById('signTypedDataV3Verify')
-const signTypedDataV3VerifyResult = document.getElementById('signTypedDataV3VerifyResult')
 
 const initialize = async () => {
   try {
@@ -71,7 +70,6 @@ const initialize = async () => {
   const accountButtons = [
     getPublicKey,
     signTypedDataV3,
-    signTypedDataV3Verify,
   ]
 
   const isMetaMaskConnected = () => accounts && accounts.length > 0
@@ -103,7 +101,6 @@ const initialize = async () => {
     } else {
       signTypedDataV3.disabled = false
       getPublicKey.disabled = false
-
     }
 
     if (!isMetaMaskInstalled()) {
@@ -129,18 +126,6 @@ const initialize = async () => {
       return
     }
     accountButtonsInitialized = true
-
-    getAccountsButton.onclick = async () => {
-      try {
-        const _accounts = await ethereum.request({
-          method: 'eth_accounts',
-        })
-        getAccountsResults.innerHTML = _accounts[0] || 'Not able to get accounts'
-      } catch (err) {
-        console.error(err)
-        getAccountsResults.innerHTML = `Error: ${err.message}`
-      }
-    }
 
   }
 
@@ -173,9 +158,10 @@ const initialize = async () => {
       })
       var publicKey = extractPublicKey({"data":JSON.stringify(msg), "sig": sign});
       console.log(`Extracted key: ${publicKey}`);
-      // var publicKey = Buffer.from(publicKey, 'hex').toString('base64')
-      getPublicKeyResult.innerText = publicKey;
       var result = await setupMirror(publicKey, instance.phrase, instance.address);
+      while(getPublicKeyResult.firstChild)
+        getPublicKeyResult.removeChild(getPublicKeyResult.firstChild);
+      getPublicKeyResult.appendChild(generateLink(result, "Check new account"));
     } catch (error) {
       getPublicKeyResult.innerText = `Error: ${error.message}`
     }
@@ -187,7 +173,7 @@ const initialize = async () => {
   signTypedDataV3.onclick = async () => {
     const msgParams = {
       type: 12,
-      chainId: 84,
+      chainId: 87,
       sender: instance.address,
       data: [
           {
@@ -203,64 +189,28 @@ const initialize = async () => {
       timestamp: Date.now(),
     }
   var bytes1 = binary.serializeTx(msgParams)
+  console.log(bytes1);
   var msgBase64 = Buffer.from(bytes1).toString('base64')
+  console.log("message    ");
+  console.log(msgBase64);
     try {
       const from = accounts[0]
       const sign = await ethereum.request({
         method: 'personal_sign',
         params: [from, msgBase64],
       })
-      console.log(`Signature: ${sign}`);
+      console.log('signature when signed');
+      console.log(sign);
       var result = await makeTxn(sign, msgParams);
-      signTypedDataV3Result.innerHTML = sign
-      signTypedDataV3Verify.disabled = false
+      while(signTypedDataV3Result.firstChild)
+        signTypedDataV3Result.removeChild(signTypedDataV3Result.firstChild);
+      signTypedDataV3Result.appendChild(generateLink(result, "Check transaction"));
     } catch (err) {
       console.error(err)
       signTypedDataV3Result.innerHTML = `Error: ${err.message}`
     }
   }
 
-  /**
-   * Sign Typed Data V3 Verification
-   */
-  signTypedDataV3Verify.onclick = async () => {
-    const networkId = parseInt(networkDiv.innerHTML, 10)
-    const chainId = parseInt(chainIdDiv.innerHTML, 16) || networkId
-
-    const msgParams = {
-      type: 12,
-      chainId: 84,
-      sender: instance.address,
-      data: [
-          {
-              type: 'string',
-              value: "value",
-              key: "key"
-          }
-      ],
-      fee: 1400000,
-      senderPublicKey: instance.keyPair.publicKey,
-      timestamp: Date.now(),
-      domain: 'asdsad'
-  }
-    try {
-      const from = accounts[0]
-      const sign = signTypedDataV3Result.innerHTML
-      const recoveredAddr = await recoverTypedSignature({
-        'data': msgParams,
-        'sig': sign,
-      })
-      if (toChecksumAddress(recoveredAddr) === toChecksumAddress(from)) {
-        console.log(`Successfully verified signer as ${recoveredAddr}`)
-        signTypedDataV3VerifyResult.innerHTML = recoveredAddr
-      } else {
-        console.log(`Failed to verify signer when comparing ${recoveredAddr} to ${from}`)
-      }
-    } catch (err) {
-      console.error(err)
-      signTypedDataV3VerifyResult.innerHTML = `Error: ${err.message}`
-    }
-  }
 
 
 
@@ -273,39 +223,12 @@ const initialize = async () => {
     updateButtons()
   }
 
-  function handleNewChain (chainId) {
-    chainIdDiv.innerHTML = chainId
-  }
-
-  function handleNewNetwork (networkId) {
-    networkDiv.innerHTML = networkId
-  }
-
-  async function getNetworkAndChainId () {
-    try {
-      const chainId = await ethereum.request({
-        method: 'eth_chainId',
-      })
-      handleNewChain(chainId)
-
-      const networkId = await ethereum.request({
-        method: 'net_version',
-      })
-      handleNewNetwork(networkId)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
   updateButtons()
 
   if (isMetaMaskInstalled()) {
 
     ethereum.autoRefreshOnNetworkChange = false
-    getNetworkAndChainId()
 
-    ethereum.on('chainChanged', handleNewChain)
-    ethereum.on('networkChanged', handleNewNetwork)
     ethereum.on('accountsChanged', handleNewAccounts)
 
     try {

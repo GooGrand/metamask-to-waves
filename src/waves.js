@@ -2,7 +2,7 @@
 const {setScript, transfer, broadcast, invokeScript, waitForTx} = require('@waves/waves-transactions');
 const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
 // Local imports
-const {distributorSeed, nodeUrl, dappAddress} = require('./config');
+const {distributorSeed, distributorPrivateKey, nodeUrl, dappAddress} = require('./config');
 const {generateSignature} = require('./utils')
 
 
@@ -15,13 +15,15 @@ const {generateSignature} = require('./utils')
  */
 async function feedWavesAcc(fromAcc, toAcc) {
     const signedTransfer = transfer({
-        chainId: 84,
+        chainId: 87,
         recipient: toAcc,
         amount: 2800000,
-        fee: 5000000
+        fee: 1000000
     }, fromAcc);
+    console.log(signedTransfer)
     try {
         var result = await broadcast(signedTransfer, nodeUrl);
+        console.log(result)
         await waitForTx(signedTransfer.id, {
             apiBase: nodeUrl
         });
@@ -69,7 +71,7 @@ async function generateScript(pub){
 async function setScriptWaves(pub, wavesAddress, seed) {
     var script = await generateScript(pub);
     const signedTransfer = setScript({
-        chainId: 84,
+        chainId: 87,
         sender: wavesAddress,
         script: script,
         fee: 1400000,
@@ -78,24 +80,7 @@ async function setScriptWaves(pub, wavesAddress, seed) {
         var result = await broadcast(signedTransfer, nodeUrl);
         return result;
     } catch(e) {
-        console.log('Saving data acc error: ');
-        console.log(e);
-    }
-}
-
-/**
- * Example of the transaction to check the Virifier
- *
- * @param {string} sign Signature of ethereum account
- * @param {Object} msg JSON data of waves transaction, that will be executed
- */
-async function addData(sign, msg) {
-    msg.proofs = [sign];
-    try {
-        var result = await broadcast(msg, nodeUrl);
-        return result;
-    } catch(e) {
-        console.log('Saving data acc error: ');
+        console.log('Setting script error: ');
         console.log(e);
     }
 }
@@ -121,8 +106,27 @@ function createWavesAccount(){
 async function setupMirror(pub, seed, address){
     var feed = await feedWavesAcc(distributorSeed, address);
     var setScript = await setScriptWaves(pub, address, seed);
-    console.log(`https://testnet.wavesexplorer.com/address/${address}/script`);
+    console.log(`https://wavesexplorer.com/address/${address}`);
     console.log(setScript);
+    return `https://wavesexplorer.com/address/${address}`
+}
+
+/**
+ * Example of the transaction to check the Virifier
+ *
+ * @param {string} sign Signature of ethereum account
+ * @param {Object} msg JSON data of waves transaction, that will be executed
+ */
+async function addData(sign, msg) {
+    msg.proofs = [sign];
+    console.log(msg)
+    try {
+        var result = await broadcast(msg, nodeUrl);
+        return result;
+    } catch(e) {
+        console.log('Saving data acc error: ');
+        console.log(e);
+    }
 }
 
 /**
@@ -132,9 +136,13 @@ async function setupMirror(pub, seed, address){
  * @param {Object} txn transaction object
  */
 async function makeTxn(sign, txn){
+    console.log(sign)
     sign = generateSignature(sign);
+    console.log(sign)
     var data = await addData(sign, txn)
-    console.log(`https://testnet.wavesexplorer.com/tx/${data.id}`);
+    console.log(data)
+    console.log(`https://wavesexplorer.com/tx/${data.id}`);
+    return `https://wavesexplorer.com/tx/${data.id}`;
 }
 
 /**
@@ -146,7 +154,7 @@ async function makeTxn(sign, txn){
  */
 async function addToAddresses(ethAddress, wavesAddress, seed) {
     const signedTransfer = invokeScript({
-        chainId: 84,
+        chainId: 87,
         sender: wavesAddress,
         dApp: dappAddress,
         call: {
@@ -178,6 +186,7 @@ module.exports = {
     addToAddresses,
     createWavesAccount,
     setupMirror,
-    generateSignature
+    generateSignature,
+    feedWavesAcc
 }
 
