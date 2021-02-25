@@ -4,10 +4,10 @@ const base58 = require('base58-encode');
 
     /**
      * Concatenates two given Arrays
-     * 
+     *
      * @param {Uint8Array} a First array to add
      * @param {Uint8Array} b Second array to add
-     * @returns {Uint8Array} 
+     * @returns {Uint8Array}
      */
 function concatTypedArrays(a, b) { // a, b TypedArray of same type
     var c = new (a.constructor)(a.length + b.length);
@@ -19,7 +19,7 @@ function concatTypedArrays(a, b) { // a, b TypedArray of same type
 module.exports = {
     /**
      * Generates the rsv value of the given signature
-     * 
+     *
      * @param {string} sign hexed string of signature (132 characters length)
      * @returns {UINT8Array} of 65 bytes string
      */
@@ -34,6 +34,15 @@ module.exports = {
         console.log(base58(sign));
         return base58(sign);
     },
+    generateLink(link, text) {
+        var linkTag = document.createElement('a');
+        linkTag.appendChild(document.createTextNode(text));
+        linkTag.role = "button";
+        linkTag.className = "btn btn-success"
+        linkTag.target = "_blank"
+        linkTag.href = link
+        return linkTag
+    }
 
 
 }

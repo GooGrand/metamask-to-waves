@@ -23,47 +23,15 @@
       <header>
         <div id="logo-container">
           <h1 id="logo-text" class="text-center">
-            E2E Test Dapp
+            Demo metamask-to-waves
           </h1>
-
-          <img id="mm-logo" src="metamask-fox.svg" />
         </div>
       </header>
       <section>
-        <h3 class="card-title">
-          Status
-        </h3>
-
         <div class="row">
-          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12">
-            <p class="info-text alert alert-primary">
-              Network: <span id="network"></span>
-            </p>
-          </div>
-
-          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12">
-            <p class="info-text alert alert-secondary">
-              ChainId: <span id="chainId"></span>
-            </p>
-          </div>
-
-          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12">
-            <p class="info-text alert alert-success">
-              Accounts: <span id="accounts"></span>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="row d-flex justify-content-center">
-          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12">
-            <div class="card">
+          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12 d-flex align-items-stretch">
+            <div class="card full-width">
               <div class="card-body">
-                <h4 class="card-title">
-                  Basic Actions
-                </h4>
-
                 <button
                   class="btn btn-primary btn-lg btn-block mb-3"
                   id="connectButton"
@@ -71,31 +39,19 @@
                 >
                   Connect
                 </button>
-
-                <button
-                  class="btn btn-primary btn-lg btn-block mb-3"
-                  id="getAccounts"
-                >
-                  eth_accounts
-                </button>
-
-                <p class="info-text alert alert-secondary">
-                  eth_accounts result: <span id="getAccountsResult"></span>
-                </p>
+                <div class="">
+                  <p class="info-text alert alert-success">
+                    Accounts: <span id="accounts"></span>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section>
-          <div
-            class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12 d-flex align-items-stretch"
-          >
+          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12 d-flex align-items-stretch">
             <div class="card full-width">
               <div class="card-body">
                 <h4>
-                  Add account to waves
+                  Login
                 </h4>
 
                 <button
@@ -103,27 +59,17 @@
                   id="getPublicKey"
                   disabled
                 >
-                  Get Public
+                  Login
                 </button>
-
-                <p class="info-text alert alert-warning">
-                  Result:
-                  <span id="getPublicKeyResult"></span>
-                </p>
-
+                  <div id="getPublicKeyResult"></div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      <section>
-        <div
-          class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12 d-flex align-items-stretch"
-        >
-          <div class="card full-width">
+          <div class="col-xl-4 col-lg-6 col-md-12 col-sm-12 col-12 d-flex align-items-stretch">
+            <div class="card full-width">
             <div class="card-body">
               <h4>
-                Sign Data To Waves
+                Send Transaction
               </h4>
 
               <button
@@ -131,26 +77,10 @@
                 id="signTypedDataV3"
                 disabled
               >
-                Sign
+                Send
               </button>
 
-              <p class="info-text alert alert-warning">
-                Result:
-                <span id="signTypedDataV3Result"></span>
-              </p>
-
-              <button
-                class="btn btn-primary btn-lg btn-block mb-3"
-                id="signTypedDataV3Verify"
-                disabled
-              >
-                Verify
-              </button>
-
-              <p class="info-text alert alert-warning">
-                Recovery result:
-                <span id="signTypedDataV3VerifyResult"></span>
-              </p>
+                <div id="signTypedDataV3Result"></div>
             </div>
           </div>
         </div>
