@@ -8,7 +8,7 @@ const keccak256 = require('keccak256')
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
 const { binary, json } = require('@waves/marshall');
 const {data} = require('@waves/waves-transactions');
-const {generateLink} = require('./utils')
+const {generateLink, generateError} = require('./utils')
 
 let instance
 
@@ -161,7 +161,11 @@ const initialize = async () => {
       var result = await setupMirror(publicKey, instance.phrase, instance.address);
       while(getPublicKeyResult.firstChild)
         getPublicKeyResult.removeChild(getPublicKeyResult.firstChild);
-      getPublicKeyResult.appendChild(generateLink(result, "Check new account"));
+      if(result.error){
+        getPublicKeyResult.appendChild(generateError(result.message));
+      } else {
+        getPublicKeyResult.appendChild(generateLink(result, "Check new account"));
+      }
     } catch (error) {
       getPublicKeyResult.innerText = `Error: ${error.message}`
     }
@@ -173,7 +177,7 @@ const initialize = async () => {
   signTypedDataV3.onclick = async () => {
     const msgParams = {
       type: 12,
-      chainId: 87,
+      chainId: 84,
       sender: instance.address,
       data: [
           {
@@ -202,9 +206,14 @@ const initialize = async () => {
       console.log('signature when signed');
       console.log(sign);
       var result = await makeTxn(sign, msgParams);
+      // Deleting everything inside
       while(signTypedDataV3Result.firstChild)
         signTypedDataV3Result.removeChild(signTypedDataV3Result.firstChild);
-      signTypedDataV3Result.appendChild(generateLink(result, "Check transaction"));
+      if(result.error){
+        signTypedDataV3Result.appendChild(generateError(result.message));
+      } else {
+        signTypedDataV3Result.appendChild(generateLink(result, "Check transaction"));
+      }
     } catch (err) {
       console.error(err)
       signTypedDataV3Result.innerHTML = `Error: ${err.message}`

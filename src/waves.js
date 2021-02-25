@@ -15,7 +15,7 @@ const {generateSignature} = require('./utils')
  */
 async function feedWavesAcc(fromAcc, toAcc) {
     const signedTransfer = transfer({
-        chainId: 87,
+        chainId: 84,
         recipient: toAcc,
         amount: 2800000,
         fee: 1000000
@@ -29,8 +29,8 @@ async function feedWavesAcc(fromAcc, toAcc) {
         });
         return result;
     } catch(e) {
-        console.log('Feeding waves acc error: ');
         console.log(e);
+        return e;
     }
 }
 
@@ -47,9 +47,17 @@ async function generateScript(pub){
     
     @Verifier(tx)
     func verify() = {
-        let signedMessage = "\x19Ethereum Signed Message:\\n" + tx.bodyBytes.toBase64String().size().toString() + toBase64String(tx.bodyBytes)
-        let pbk = ecrecover(signedMessage.toBytes().keccak256(), tx.proofs[0])
-        pbk == base16'${pub.replace('0x', '')}'
+        let bodyBase64 = tx.bodyBytes.toBase64String()
+        let signedMessage = ("\x19Ethereum Signed Message:\\n" + bodyBase64.size().toString() + bodyBase64).toBytes()
+        let signature = tx.proofs[0] + tx.proofs[1]
+        let proofSize = signature.size()
+
+        if proofSize != 65 then
+            throw("Wrong proof size. Actual: " + proofSize.toString() + ". Expected: 65.")
+        else {
+            let pbk = ecrecover(signedMessage.keccak256(), signature)
+            pbk == base16'${pub.replace('0x', '')}'
+        }
     }`;
     var res = await fetch(nodeUrl+'/utils/script/compileCode', {
         method: 'POST',
@@ -71,7 +79,7 @@ async function generateScript(pub){
 async function setScriptWaves(pub, wavesAddress, seed) {
     var script = await generateScript(pub);
     const signedTransfer = setScript({
-        chainId: 87,
+        chainId: 84,
         sender: wavesAddress,
         script: script,
         fee: 1400000,
@@ -80,8 +88,8 @@ async function setScriptWaves(pub, wavesAddress, seed) {
         var result = await broadcast(signedTransfer, nodeUrl);
         return result;
     } catch(e) {
-        console.log('Setting script error: ');
         console.log(e);
+        return e;
     }
 }
 
@@ -90,7 +98,7 @@ async function setScriptWaves(pub, wavesAddress, seed) {
  *
  */
 function createWavesAccount(){
-    const instance = new Seed(Seed.create().phrase, 'W'.charCodeAt(0));
+    const instance = new Seed(Seed.create().phrase, 'T'.charCodeAt(0));
     // let { address, phrase: seed, keyPair } = instance;
     // const { publicKey, privateKey } = keyPair;
     return instance;
@@ -105,10 +113,16 @@ function createWavesAccount(){
  */
 async function setupMirror(pub, seed, address){
     var feed = await feedWavesAcc(distributorSeed, address);
+    if(feed.error) {
+        return feed
+    }
     var setScript = await setScriptWaves(pub, address, seed);
+    if(setScript.error){
+        return setScript
+    }
     console.log(`https://wavesexplorer.com/address/${address}`);
     console.log(setScript);
-    return `https://wavesexplorer.com/address/${address}`
+    return `https://testnet.wavesexplorer.com/address/${address}`
 }
 
 /**
@@ -118,14 +132,14 @@ async function setupMirror(pub, seed, address){
  * @param {Object} msg JSON data of waves transaction, that will be executed
  */
 async function addData(sign, msg) {
-    msg.proofs = [sign];
+    msg.proofs = sign;
     console.log(msg)
     try {
         var result = await broadcast(msg, nodeUrl);
         return result;
     } catch(e) {
-        console.log('Saving data acc error: ');
         console.log(e);
+        return e;
     }
 }
 
@@ -140,9 +154,12 @@ async function makeTxn(sign, txn){
     sign = generateSignature(sign);
     console.log(sign)
     var data = await addData(sign, txn)
+    if(data.error){
+        return data
+    }
     console.log(data)
     console.log(`https://wavesexplorer.com/tx/${data.id}`);
-    return `https://wavesexplorer.com/tx/${data.id}`;
+    return `https://testnet.wavesexplorer.com/tx/${data.id}`;
 }
 
 /**
@@ -154,7 +171,7 @@ async function makeTxn(sign, txn){
  */
 async function addToAddresses(ethAddress, wavesAddress, seed) {
     const signedTransfer = invokeScript({
-        chainId: 87,
+        chainId: 84,
         sender: wavesAddress,
         dApp: dappAddress,
         call: {
