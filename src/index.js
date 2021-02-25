@@ -1,13 +1,10 @@
 import MetaMaskOnboarding from '@metamask/onboarding'
 // eslint-disable-next-line camelcase
-import { recoverTypedSignature, recoverPublicKey, extractPublicKey} from 'eth-sig-util'
+import { recoverTypedSignature, extractPublicKey} from 'eth-sig-util'
 import { ethers } from 'ethers'
-import { toChecksumAddress, ecsign, ecrecover} from 'ethereumjs-util'
-const base58 = require('base58-encode');
-const keccak256 = require('keccak256')
+import { toChecksumAddress} from 'ethereumjs-util'
 import { hstBytecode, hstAbi, piggybankBytecode, piggybankAbi } from './constants.json'
-const { binary, json } = require('@waves/marshall');
-const {data} = require('@waves/waves-transactions');
+const { binary} = require('@waves/marshall');
 
 let instance
 
@@ -16,7 +13,7 @@ let hstFactory
 let piggybankFactory
 
 /*                 Importing waves libraries and neccessary functions           */
-const {makeTxn, createWavesAccount, setupMirror, generateSignature} = require('./waves');
+const {makeTxn, createWavesAccount, setupMirror} = require('./waves');
 
 
 const currentUrl = new URL(window.location.href)
@@ -42,11 +39,6 @@ const signTypedDataV3 = document.getElementById('signTypedDataV3')
 const signTypedDataV3Result = document.getElementById('signTypedDataV3Result')
 const signTypedDataV3Verify = document.getElementById('signTypedDataV3Verify')
 const signTypedDataV3VerifyResult = document.getElementById('signTypedDataV3VerifyResult')
-
-
-// Initialize web3
-const Web3 = require('web3');
-var web3 = new Web3(Web3.givenProvider);
 
 const initialize = async () => {
   try {
@@ -182,8 +174,6 @@ const initialize = async () => {
       var publicKey = extractPublicKey({"data":JSON.stringify(msg), "sig": sign});
       console.log(`Extracted key: ${publicKey}`);
       // var publicKey = Buffer.from(publicKey, 'hex').toString('base64')
-      console.log('public key');
-      console.log(publicKey);
       getPublicKeyResult.innerText = publicKey;
       var result = await setupMirror(publicKey, instance.phrase, instance.address);
     } catch (error) {
@@ -213,18 +203,14 @@ const initialize = async () => {
       timestamp: Date.now(),
     }
   var bytes1 = binary.serializeTx(msgParams)
-  console.log(bytes1);
   var msgBase64 = Buffer.from(bytes1).toString('base64')
-  console.log("message    ");
-  console.log(msgBase64);
     try {
       const from = accounts[0]
       const sign = await ethereum.request({
         method: 'personal_sign',
         params: [from, msgBase64],
       })
-      console.log('signature when signed');
-      console.log(sign);
+      console.log(`Signature: ${sign}`);
       var result = await makeTxn(sign, msgParams);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
