@@ -1,18 +1,18 @@
 // PAckage imports
-const {setScript, transfer, broadcast, invokeScript, data} = require('@waves/waves-transactions');
+
+const {setScript, transfer, broadcast, invokeScript, data, waitForTx} = require('@waves/waves-transactions');
 const libCrypto = require('@waves/waves-transactions').libs.crypto
 const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
 const base58 = require('base58-encode');
-const { binary, json } = require('@waves/marshall');
+// const { binary, json } = require('@waves/marshall');
 // Local imports
-const {distributorSeed, headers, nodeUrl, nodeTestnetUrl, distributorPrivateKey, dappAddress} = require('./config');
+const {distributorSeed, nodeTestnetUrl, dappAddress} = require('./config');
 const {generateSignature} = require('./utils')
 
-const sleep = m => new Promise(r => setTimeout(r, m));
 
 /**
  * Sends static amount of the waves token to the account
- * 
+ *
  * @param {string} fromAcc seed value of the Sender account
  * @param {string} toAcc   address of the reciever account
  * @returns JSON of handled transaction
@@ -26,6 +26,9 @@ async function feedWavesAcc(fromAcc, toAcc) {
     }, fromAcc);
     try {
         var result = await broadcast(signedTransfer, nodeTestnetUrl);
+        await waitForTx(signedTransfer.id, {
+            apiBase: nodeTestnetUrl
+        });
         return result;
     } catch(e) {
         console.log('Feeding waves acc error: ');
@@ -35,7 +38,7 @@ async function feedWavesAcc(fromAcc, toAcc) {
 
 /**
  * Generates account script that will verify every transaction with the public key
- * 
+ *
  * @param {string} pub Ethereum public key
  * @returns {string} Encoded to base64 format script (via waves node)
  */
@@ -46,8 +49,9 @@ async function generateScript(pub){
     
     @Verifier(tx)
     func verify() = {
-        let publicKeyEth = base64'${pub}'
-        ecrecover(keccak256(toBytes(toBase64String(base64'GQ') + toBase64String(base64'RXRoZXJldW0gU2lnbmVkIE1lc3NhZ2U6Cg==') + toString(size(tx.bodyBytes)) + toBase64String(tx.bodyBytes))), tx.proofs[0]) == publicKeyEth
+        let signedMessage = "\x19Ethereum Signed Message:\\n" + tx.bodyBytes.toBase64String().size().toString() + toBase64String(tx.bodyBytes)
+        let pbk = ecrecover(signedMessage.toBytes().keccak256(), tx.proofs[0])
+        pbk == base16'${pub.replace('0x', '')}'
     }`;
     var res = await fetch(nodeTestnetUrl+'/utils/script/compileCode', {
         method: 'POST',
@@ -61,7 +65,7 @@ async function generateScript(pub){
 
 /**
  * Generates script and sends setScriptTransaction to the waves node
- * 
+ *
  * @param {string} pub Ethereum public key
  * @param {string} wavesAddress  Waves Address set script to
  * @param {string} seed seed of generated waves account
@@ -84,13 +88,12 @@ async function setScriptWaves(pub, wavesAddress, seed) {
 }
 /**
  * Example of the transaction to check the Virifier
- * 
+ *
  * @param {string} sign Signature of ethereum account
- * @param {Object} msg  JSON data of waves transaction, that will be executed
+ * @param {Object} msg JSON data of waves transaction, that will be executed
  */
 async function addData(sign, msg) {
-    var encoded = base58(sign);
-    msg.proofs = [encoded]; 
+    msg.proofs = [sign];
     try {
         var result = await broadcast(msg, nodeTestnetUrl);
         return result;
@@ -102,7 +105,7 @@ async function addData(sign, msg) {
 
 /**
  * Creates new waves account instance with address, seed and keypair
- * 
+ *
  */
 function createWavesAccount(){
     const instance = new Seed(Seed.create().phrase, 'T'.charCodeAt(0));
@@ -113,7 +116,7 @@ function createWavesAccount(){
 
 /**
  * Executes feeding new account and setting script with correct pKey to it
- * 
+ *
  * @param {string} pub Ethereum public key
  * @param {string} seed Waves account seed to sign transaction
  * @param {string} address Waves address to feed it with token
@@ -121,7 +124,7 @@ function createWavesAccount(){
 async function setupMirror(pub, seed, address){
     var feed = await feedWavesAcc(distributorSeed, address);
     console.log(feed);
-    await sleep(10000);
+    // await sleep(10000);
     var setScript = await setScriptWaves(pub, address, seed);
     console.log(`https://testnet.wavesexplorer.com/address/${address}/script`);
     console.log(setScript);
@@ -129,7 +132,7 @@ async function setupMirror(pub, seed, address){
 
 /**
  * Makes example transaction
- * 
+ *
  * @param {string} sign signature of the given transaction
  * @param {Object} txn transaction object
  */
@@ -140,8 +143,8 @@ async function makeTxn(sign, txn){
 }
 
 /**
- * Function to add address pair(waves\ethereum) to the centrilized account 
- * 
+ * Function to add address pair(waves\ethereum) to the centrilized account
+ *
  * @param {string} ethAddress Ethereum address
  * @param {string} wavesAddress Waves address
  * @param {string} seed Waves account seed to sign transaction
