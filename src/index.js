@@ -15,7 +15,7 @@ let ethersProvider
 let hstFactory
 let piggybankFactory
 
-/*                 Importing waves libraries and neccessary functions           */ 
+/*                 Importing waves libraries and neccessary functions           */
 const {makeTxn, createWavesAccount, setupMirror, generateSignature} = require('./waves');
 
 
@@ -44,7 +44,7 @@ const signTypedDataV3Verify = document.getElementById('signTypedDataV3Verify')
 const signTypedDataV3VerifyResult = document.getElementById('signTypedDataV3VerifyResult')
 
 
-// Initialize web3 
+// Initialize web3
 const Web3 = require('web3');
 var web3 = new Web3(Web3.givenProvider);
 
@@ -149,7 +149,7 @@ const initialize = async () => {
         getAccountsResults.innerHTML = `Error: ${err.message}`
       }
     }
-  
+
   }
 
   getPublicKey.onclick = async () => {
@@ -157,30 +157,31 @@ const initialize = async () => {
       instance = createWavesAccount();
     }
     console.log(instance);
-    var msg = {  
+    var msg = {
       type: 12,
       chainId: 84,
       sender: instance.address,
       data: [
           {
               type: 'string',
-              value: "value", 
+              value: "value",
               key: "key"
           }
       ],
       fee: 1400000,
-      feeAssetId: null, 
+      feeAssetId: null,
       senderPublicKey: instance.keyPair.publicKey,
       timestamp: 1614111284116,
     }
-  
+
     try {
       var sign = await ethereum.request({
         method: 'personal_sign',
         params: [accounts[0], JSON.stringify(msg)],
       })
-      var publicKey = extractPublicKey({"data":JSON.stringify(msg), "sig":sign});
-      var publicKey = Buffer.from(publicKey, 'hex').toString('base64')
+      var publicKey = extractPublicKey({"data":JSON.stringify(msg), "sig": sign});
+      console.log(`Extracted key: ${publicKey}`);
+      // var publicKey = Buffer.from(publicKey, 'hex').toString('base64')
       console.log('public key');
       console.log(publicKey);
       getPublicKeyResult.innerText = publicKey;
@@ -194,14 +195,14 @@ const initialize = async () => {
    * Sign Typed Data Version 3 Test
    */
   signTypedDataV3.onclick = async () => {
-    const msgParams = {  
+    const msgParams = {
       type: 12,
       chainId: 84,
       sender: instance.address,
       data: [
           {
               type: 'string',
-              value: "value", 
+              value: "value",
               key: "key"
           }
       ],
@@ -222,10 +223,8 @@ const initialize = async () => {
         method: 'personal_sign',
         params: [from, msgBase64],
       })
-      console.log(JSON.stringify(sign))
       console.log('signature when signed');
       console.log(sign);
-      console.log(JSON.stringify(msgParams))
       var result = await makeTxn(sign, msgParams);
       signTypedDataV3Result.innerHTML = sign
       signTypedDataV3Verify.disabled = false
@@ -249,7 +248,7 @@ const initialize = async () => {
       data: [
           {
               type: 'string',
-              value: "value", 
+              value: "value",
               key: "key"
           }
       ],
@@ -278,7 +277,7 @@ const initialize = async () => {
   }
 
 
-  
+
   function handleNewAccounts (newAccounts) {
     accounts = newAccounts
     accountsDiv.innerHTML = accounts

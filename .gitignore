@@ -4,3 +4,4 @@ node_modules
 dist
 .gitignore
 .gitattributes
+.idea

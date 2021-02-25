@@ -32,7 +32,7 @@ module.exports = {
         sign = concatTypedArrays(sign2arrays,newArray)
         console.log('signature after base58');
         console.log(base58(sign));
-        return sign;
+        return base58(sign);
     },
 
 
