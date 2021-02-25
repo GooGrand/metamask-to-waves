@@ -1,12 +1,8 @@
 // PAckage imports
-
-const {setScript, transfer, broadcast, invokeScript, data, waitForTx} = require('@waves/waves-transactions');
-const libCrypto = require('@waves/waves-transactions').libs.crypto
+const {setScript, transfer, broadcast, invokeScript, waitForTx} = require('@waves/waves-transactions');
 const {Seed} = require('@waves/waves-transactions/dist/seedUtils/index')
-const base58 = require('base58-encode');
-// const { binary, json } = require('@waves/marshall');
 // Local imports
-const {distributorSeed, nodeTestnetUrl, dappAddress} = require('./config');
+const {distributorSeed, nodeUrl, dappAddress} = require('./config');
 const {generateSignature} = require('./utils')
 
 
@@ -25,9 +21,9 @@ async function feedWavesAcc(fromAcc, toAcc) {
         fee: 5000000
     }, fromAcc);
     try {
-        var result = await broadcast(signedTransfer, nodeTestnetUrl);
+        var result = await broadcast(signedTransfer, nodeUrl);
         await waitForTx(signedTransfer.id, {
-            apiBase: nodeTestnetUrl
+            apiBase: nodeUrl
         });
         return result;
     } catch(e) {
@@ -53,7 +49,7 @@ async function generateScript(pub){
         let pbk = ecrecover(signedMessage.toBytes().keccak256(), tx.proofs[0])
         pbk == base16'${pub.replace('0x', '')}'
     }`;
-    var res = await fetch(nodeTestnetUrl+'/utils/script/compileCode', {
+    var res = await fetch(nodeUrl+'/utils/script/compileCode', {
         method: 'POST',
         body: script
     });
@@ -79,13 +75,14 @@ async function setScriptWaves(pub, wavesAddress, seed) {
         fee: 1400000,
     }, seed);
     try {
-        var result = await broadcast(signedTransfer, nodeTestnetUrl);
+        var result = await broadcast(signedTransfer, nodeUrl);
         return result;
     } catch(e) {
         console.log('Saving data acc error: ');
         console.log(e);
     }
 }
+
 /**
  * Example of the transaction to check the Virifier
  *
@@ -95,7 +92,7 @@ async function setScriptWaves(pub, wavesAddress, seed) {
 async function addData(sign, msg) {
     msg.proofs = [sign];
     try {
-        var result = await broadcast(msg, nodeTestnetUrl);
+        var result = await broadcast(msg, nodeUrl);
         return result;
     } catch(e) {
         console.log('Saving data acc error: ');
@@ -108,7 +105,7 @@ async function addData(sign, msg) {
  *
  */
 function createWavesAccount(){
-    const instance = new Seed(Seed.create().phrase, 'T'.charCodeAt(0));
+    const instance = new Seed(Seed.create().phrase, 'W'.charCodeAt(0));
     // let { address, phrase: seed, keyPair } = instance;
     // const { publicKey, privateKey } = keyPair;
     return instance;
@@ -123,8 +120,6 @@ function createWavesAccount(){
  */
 async function setupMirror(pub, seed, address){
     var feed = await feedWavesAcc(distributorSeed, address);
-    console.log(feed);
-    // await sleep(10000);
     var setScript = await setScriptWaves(pub, address, seed);
     console.log(`https://testnet.wavesexplorer.com/address/${address}/script`);
     console.log(setScript);
@@ -139,7 +134,7 @@ async function setupMirror(pub, seed, address){
 async function makeTxn(sign, txn){
     sign = generateSignature(sign);
     var data = await addData(sign, txn)
-    console.log(data);
+    console.log(`https://testnet.wavesexplorer.com/tx/${data.id}`);
 }
 
 /**
@@ -169,7 +164,7 @@ async function addToAddresses(ethAddress, wavesAddress, seed) {
         }
     }, seed);
     try {
-        var result = await broadcast(signedTransfer, nodeTestnetUrl);
+        var result = await broadcast(signedTransfer, nodeUrl);
         return result;
     } catch(e) {
         console.log('saving addresses error: ');
