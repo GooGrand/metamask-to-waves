@@ -49,15 +49,30 @@ async function generateScript(pub){
     func verify() = {
         let bodyBase64 = tx.bodyBytes.toBase64String()
         let signedMessage = ("\x19Ethereum Signed Message:\\n" + bodyBase64.size().toString() + bodyBase64).toBytes()
-        let signature = tx.proofs[0] + tx.proofs[1]
-        let proofSize = signature.size()
-
-        if proofSize != 65 then
-            throw("Wrong proof size. Actual: " + proofSize.toString() + ". Expected: 65.")
-        else {
-            let pbk = ecrecover(signedMessage.keccak256(), signature)
-            pbk == base16'${pub.replace('0x', '')}'
+        let proof = {
+            let proofsSum = {
+                if tx.proofs[0].size() > 64 || tx.proofs[1].size() > 64 then
+                    throw("Proof length must be equal to 64 bytes or less")
+                else if tx.proofs[2].size() != 0
+                        || tx.proofs[3].size() != 0
+                        || tx.proofs[4].size() != 0
+                        || tx.proofs[5].size() != 0
+                        || tx.proofs[6].size() != 0
+                        || tx.proofs[7].size() != 0 then
+                    throw("There must be no more than 2 proofs")
+                else
+                    tx.proofs[0] + tx.proofs[1]
+            }
+    
+            let proofSize = proofsSum.size()
+        
+            if proofSize != 65 then
+                throw("Wrong proof size. Actual: " + proofSize.toString() + " bytes. Expected: 65 bytes.")
+            else proofsSum
         }
+        
+        let pbk = ecrecover(signedMessage.keccak256(), proof)
+        pbk == base16'${pub.replace('0x', '')}'
     }`;
     var res = await fetch(nodeUrl+'/utils/script/compileCode', {
         method: 'POST',
